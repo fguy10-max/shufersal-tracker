@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מחירוסקופ | שלי גבעתיים שביט</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800;900&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:#f7f4ee; --paper:#fff; --ink:#1c1917; --ink2:#6b6560; --ink3:#b0aa9e;
+  --border:#e8e3da; --green:#14532d; --green-bg:#f0fdf4; --green-mid:#22c55e;
+  --red:#991b1b; --red-bg:#fef2f2; --orange:#c2410c; --orange-bg:#fff7ed;
+  --blue:#1e3a5f; --blue-bg:#eff6ff; --r:12px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08); --shadow:0 4px 16px rgba(0,0,0,0.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Heebo',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;}
+
+header{background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:58px;position:sticky;top:0;z-index:100;}
+.logo{font-family:'Frank Ruhl Libre',serif;font-size:1.5rem;font-weight:900;}
+.logo em{color:#86efac;font-style:normal;}
+.store-tag{font-size:0.8rem;color:rgba(255,255,255,0.6);display:flex;align-items:center;gap:6px;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#86efac;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.update-info{font-size:0.72rem;color:rgba(255,255,255,0.4);text-align:left;}
+
+/* Loading screen */
+#loading-screen{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.5s;}
+#loading-screen.done{opacity:0;pointer-events:none;}
+.loader-logo{font-family:'Frank Ruhl Libre',serif;font-size:2.5rem;font-weight:900;color:#fff;margin-bottom:24px;}
+.loader-logo em{color:#86efac;font-style:normal;}
+.loader-bar{width:240px;height:4px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;}
+.loader-fill{height:100%;background:#86efac;border-radius:4px;width:0%;transition:width 0.3s ease;}
+.loader-text{font-size:0.85rem;color:rgba(255,255,255,0.5);margin-top:12px;}
+
+.layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 58px);}
+.sidebar{background:var(--paper);border-left:1px solid var(--border);padding:20px 0;position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto;}
+.sidebar-section{padding:0 16px 8px;font-size:0.67rem;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--ink3);margin-top:8px;}
+.cat-row{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:0.9rem;color:var(--ink2);font-weight:500;border-right:3px solid transparent;transition:all 0.15s;}
+.cat-row:hover{background:var(--cream);color:var(--ink);}
+.cat-row.active{background:var(--blue-bg);color:var(--blue);border-right-color:var(--blue);font-weight:700;}
+.cat-count{margin-right:auto;font-size:0.72rem;color:var(--ink3);}
+.cat-promo{font-size:0.68rem;font-weight:700;background:var(--red-bg);color:var(--red);padding:2px 7px;border-radius:10px;}
+.cat-cheap{font-size:0.68rem;font-weight:700;background:var(--green-bg);color:var(--green);padding:2px 7px;border-radius:10px;}
+
+.content{padding:24px 28px;}
+
+/* Stats */
+.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.sum-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm);}
+.sum-num{font-family:'Frank Ruhl Libre',serif;font-size:2rem;font-weight:900;line-height:1;}
+.sum-lbl{font-size:0.78rem;color:var(--ink2);margin-top:4px;}
+.sum-card.green .sum-num{color:var(--green);}
+.sum-card.orange .sum-num{color:var(--orange);}
+.sum-card.blue .sum-num{color:var(--blue);}
+
+/* History banner */
+.history-banner{background:linear-gradient(135deg,#1e3a5f,#2d5a9e);border-radius:var(--r);padding:16px 20px;margin-bottom:20px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
+.history-banner.has-drops{background:linear-gradient(135deg,#14532d,#16a34a);}
+.hb-left h3{font-size:1rem;font-weight:700;margin-bottom:4px;}
+.hb-left p{font-size:0.82rem;opacity:0.75;}
+.hb-days{font-family:'Frank Ruhl Libre',serif;font-size:2.5rem;font-weight:900;line-height:1;opacity:0.9;}
+.hb-days span{font-size:0.75rem;font-weight:400;opacity:0.7;display:block;text-align:center;}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;}
+.page-title{font-family:'Frank Ruhl Libre',serif;font-size:1.4rem;font-weight:700;}
+.page-sub{font-size:0.82rem;color:var(--ink2);margin-top:2px;}
+.filters{display:flex;gap:8px;flex-wrap:wrap;}
+.fchip{padding:6px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--paper);color:var(--ink2);transition:all 0.15s;}
+.fchip:hover{border-color:var(--ink2);color:var(--ink);}
+.fchip.f-all.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+.fchip.f-promo.on{background:var(--orange);border-color:var(--orange);color:#fff;}
+.fchip.f-cheap.on{background:var(--green);border-color:var(--green);color:#fff;}
+.fchip.f-drop.on{background:var(--blue);border-color:var(--blue);color:#fff;}
+
+.search-wrap{position:relative;margin-bottom:14px;}
+.search-wrap input{width:100%;padding:11px 16px 11px 40px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Heebo',sans-serif;font-size:0.95rem;background:var(--paper);color:var(--ink);outline:none;transition:border-color 0.2s;}
+.search-wrap input:focus{border-color:var(--blue);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink3);}
+
+.sort-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.8rem;color:var(--ink2);}
+.sbtn{padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:600;background:none;border:1px solid var(--border);cursor:pointer;color:var(--ink2);transition:all 0.15s;}
+.sbtn.on,.sbtn:hover{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+.results-label{font-size:0.8rem;color:var(--ink2);margin-bottom:12px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+
+/* Card */
+.card{background:var(--paper);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow-sm);transition:transform 0.15s,box-shadow 0.15s;animation:fadeUp 0.25s ease both;position:relative;}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.badge{display:inline-block;font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:6px;margin-bottom:8px;}
+.badge-promo{background:var(--orange-bg);color:var(--orange);}
+.badge-cheap{background:var(--green-bg);color:var(--green);}
+.badge-drop{background:var(--blue-bg);color:var(--blue);}
+
+.card-name{font-weight:700;font-size:0.9rem;line-height:1.3;margin-bottom:3px;}
+.card-brand{font-size:0.75rem;color:var(--ink2);margin-bottom:10px;}
+
+.price-row{display:flex;align-items:flex-end;gap:8px;margin-bottom:3px;}
+.price-now{font-family:'Frank Ruhl Libre',serif;font-size:1.9rem;font-weight:900;line-height:1;}
+.price-prev{font-size:0.85rem;color:var(--ink3);text-decoration:line-through;margin-bottom:4px;}
+.price-unit{font-size:0.75rem;color:var(--ink2);margin-bottom:6px;}
+
+/* מחיר ל-100 */
+.price100-row{display:flex;align-items:center;justify-content:space-between;background:var(--cream);border-radius:8px;padding:6px 10px;margin-bottom:8px;}
+.price100-val{font-size:0.82rem;font-weight:700;color:var(--ink);}
+.price100-lbl{font-size:0.72rem;color:var(--ink2);}
+.vs-avg-pill{font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:10px;}
+.vs-cheaper{background:var(--green-bg);color:var(--green);}
+.vs-expensive{background:var(--red-bg);color:var(--red);}
+
+/* drop indicator */
+.drop-row{display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:700;color:var(--blue);margin-bottom:6px;}
+
+.promo-tag{background:var(--orange-bg);color:var(--orange);font-size:0.75rem;font-weight:600;padding:4px 10px;border-radius:6px;margin-bottom:6px;line-height:1.3;}
+
+.card-footer{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:0.72rem;color:var(--ink3);}
+.watch-btn{font-size:0.74rem;font-weight:700;color:var(--ink2);background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;transition:all 0.15s;}
+.watch-btn:hover,.watch-btn.on{border-color:#ca8a04;color:#854d0e;background:#fefce8;}
+
+.empty{text-align:center;padding:60px 20px;color:var(--ink2);}
+.empty .icon{font-size:3rem;margin-bottom:12px;}
+
+@media(max-width:700px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{position:static;height:auto;overflow-x:auto;white-space:nowrap;display:flex;border-bottom:1px solid var(--border);}
+  .cat-row{display:inline-flex;border-right:none;border-bottom:3px solid transparent;}
+  .cat-row.active{border-bottom-color:var(--blue);border-right:none;}
+  .sidebar-section{display:none;}
+  .summary-row{grid-template-columns:1fr 1fr;}
+  .content{padding:16px;}
+  header{padding:0 16px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loader-logo">מחירו<em>סקופ</em></div>
+  <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+  <div class="loader-text" id="loader-text">מושך נתונים עדכניים...</div>
+</div>
+
+<header>
+  <div class="logo">מחירו<em>סקופ</em></div>
+  <div class="store-tag"><span class="live-dot"></span>שלי גבעתיים שביט</div>
+  <div class="update-info" id="update-info"></div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="content" id="main-content" style="display:none">
+
+    <div class="summary-row">
+      <div class="sum-card"><div class="sum-num" id="s-total">—</div><div class="sum-lbl">מוצרים בסניף</div></div>
+      <div class="sum-card orange"><div class="sum-num" id="s-promos">—</div><div class="sum-lbl">מבצעים</div></div>
+      <div class="sum-card green"><div class="sum-num" id="s-cheap">—</div><div class="sum-lbl">זולים מהממוצע</div></div>
+      <div class="sum-card blue"><div class="sum-num" id="s-drops">—</div><div class="sum-lbl">ירידות מחיר</div></div>
+    </div>
+
+    <div class="history-banner" id="history-banner">
+      <div class="hb-left">
+        <h3 id="hb-title">📅 צבירת היסטוריה</h3>
+        <p id="hb-sub">כל יום נוספת שורה — ירידות יתחילו להופיע בקרוב</p>
+      </div>
+      <div><div class="hb-days" id="hb-days">1<span>יום</span></div></div>
+    </div>
+
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">כל המוצרים</div>
+        <div class="page-sub" id="page-sub"></div>
+      </div>
+      <div class="filters">
+        <button class="fchip f-all on" onclick="setFilter('all',this)">הכל</button>
+        <button class="fchip f-promo" onclick="setFilter('promo',this)">🔥 מבצעים</button>
+        <button class="fchip f-cheap" onclick="setFilter('cheap',this)">💰 זול מהממוצע</button>
+        <button class="fchip f-drop" onclick="setFilter('drop',this)">📉 ירד במחיר</button>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search" placeholder="חיפוש מוצר..." oninput="renderGrid()">
+    </div>
+
+    <div class="sort-row">
+      מיון:
+      <button class="sbtn on" onclick="setSort('name',this)">א-ב</button>
+      <button class="sbtn" onclick="setSort('price_asc',this)">מחיר ↑</button>
+      <button class="sbtn" onclick="setSort('price_desc',this)">מחיר ↓</button>
+      <button class="sbtn" onclick="setSort('cheap',this)">זול מהממוצע</button>
+      <button class="sbtn" onclick="setSort('drop',this)">ירידה גדולה</button>
+    </div>
+
+    <div class="results-label" id="results-label"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" style="display:none"><div class="icon">🔍</div><p>לא נמצאו תוצאות</p></div>
+  </main>
+</div>
+
+<script>
+const FILE_ID = '1PuMpSZCn4AruwASdE7pn06JJavUelsn8';
+const API_URL = `https://www.googleapis.com/drive/v3/files/${FILE_ID}?alt=media&key=AIzaSyD-placeholder`;
+const DIRECT_URL = `https://drive.google.com/uc?export=download&id=${FILE_ID}`;
+
+const CAT_LABELS = {
+  dairy:'🥛 מוצרי חלב', meat:'🍗 בשר ועוף', produce:'🥦 ירקות ופירות',
+  bakery:'🍞 לחם ומאפים', beverages:'🧃 משקאות', snacks:'🍿 חטיפים',
+  oil:'🫒 שמנים ורטבים', grains:'🌾 דגנים', frozen:'❄️ קפואים',
+  hygiene:'🧴 טיפוח', cleaning:'🧹 ניקיון', baby:'👶 תינוקות', other:'📦 אחר'
+};
+
+let DATA = null;
+let allProducts = [];
+let catMap = {};
+let currentCat = 'all';
+let currentFilter = 'all';
+let currentSort = 'name';
+let watching = new Set();
+
+function setLoader(pct, text) {
+  document.getElementById('loader-fill').style.width = pct + '%';
+  document.getElementById('loader-text').textContent = text;
+}
+
+async function loadData() {
+  setLoader(20, 'מתחבר ל-Google Drive...');
+  try {
+    // נסיון ראשון — Google Drive export URL
+    const r = await fetch(DIRECT_URL);
+    if (!r.ok) throw new Error('Drive fetch failed');
+    setLoader(60, 'מנתח נתונים...');
+    DATA = await r.json();
+  } catch(e) {
+    // fallback — CORS proxy
+    setLoader(40, 'מנסה חיבור חלופי...');
+    try {
+      const proxy = `https://corsproxy.io/?${encodeURIComponent(DIRECT_URL)}`;
+      const r2 = await fetch(proxy);
+      DATA = await r2.json();
+    } catch(e2) {
+      document.getElementById('loader-text').textContent = '❌ שגיאה בטעינה — בדקו חיבור אינטרנט';
+      return;
+    }
+  }
+
+  setLoader(80, 'בונה תצוגה...');
+
+  // עיבוד נתונים
+  catMap = DATA.categories || {};
+  allProducts = [];
+  for (const [cat, items] of Object.entries(catMap)) {
+    items.forEach(p => { p._cat = cat; allProducts.push(p); });
+  }
+
+  setLoader(100, 'מוכן!');
+  setTimeout(() => {
+    document.getElementById('loading-screen').classList.add('done');
+    document.getElementById('main-content').style.display = 'block';
+    initUI();
+  }, 400);
+}
+
+function initUI() {
+  // Header
+  const d = new Date(DATA.generatedAt);
+  document.getElementById('update-info').textContent =
+    'עודכן: ' + d.toLocaleDateString('he-IL') + ' ' + d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+
+  // Stats
+  const cheapCount = allProducts.filter(p => p.vsAvgPct && p.vsAvgPct < -5).length;
+  document.getElementById('s-total').textContent = DATA.totalProducts.toLocaleString();
+  document.getElementById('s-promos').textContent = DATA.totalWithPromo;
+  document.getElementById('s-cheap').textContent = cheapCount;
+  document.getElementById('s-drops').textContent = DATA.totalDrops || 0;
+
+  // History banner
+  const days = DATA.historyDays || 1;
+  document.getElementById('hb-days').innerHTML = days + '<span>' + (days === 1 ? 'יום' : 'ימים') + '</span>';
+  if (days >= 3) {
+    document.getElementById('history-banner').classList.add('has-drops');
+    document.getElementById('hb-title').textContent = '📉 יש היסטוריה! ירידות מחיר זמינות';
+    document.getElementById('hb-sub').textContent = DATA.historyDates ? DATA.historyDates.join(' · ') : '';
+  } else {
+    document.getElementById('hb-sub').textContent =
+      'יש ' + days + ' יום היסטוריה — ירידות יתחילו להופיע אחרי 2-3 ימים נוספים';
+  }
+
+  buildSidebar();
+  renderGrid();
+}
+
+function buildSidebar() {
+  const el = document.getElementById('sidebar');
+  let html = '<div class="sidebar-section">קטגוריות</div>';
+  html += `<div class="cat-row active" onclick="selectCat('all',this)">
+    <span>🏠</span> כל המוצרים
+    <span class="cat-count">${allProducts.length.toLocaleString()}</span>
+  </div>`;
+
+  const sorted = Object.entries(catMap).sort((a,b) => b[1].length - a[1].length);
+  for (const [cat, items] of sorted) {
+    const promos = items.filter(p => p.promo).length;
+    const cheap  = items.filter(p => p.vsAvgPct && p.vsAvgPct < -5).length;
+    const icon   = CAT_LABELS[cat]?.split(' ')[0] || '📦';
+    const label  = CAT_LABELS[cat]?.split(' ').slice(1).join(' ') || cat;
+    const badge  = promos > 0 ? `<span class="cat-promo">${promos} מבצע</span>` :
+                   cheap  > 0 ? `<span class="cat-cheap">${cheap} זול</span>` :
+                                `<span class="cat-count">${items.length}</span>`;
+    html += `<div class="cat-row" onclick="selectCat('${cat}',this)">
+      <span>${icon}</span>${label}${badge}
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function selectCat(cat, el) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-row').forEach(r => r.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = cat === 'all' ? 'כל המוצרים' : (CAT_LABELS[cat] || cat);
+  document.getElementById('search').value = '';
+  renderGrid();
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fchip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  renderGrid();
+}
+
+function setSort(s, btn) {
+  currentSort = s;
+  document.querySelectorAll('.sbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGrid();
+}
+
+function getProducts() {
+  let list = currentCat === 'all' ? allProducts : (catMap[currentCat] || []);
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || (p.brand||'').toLowerCase().includes(q));
+
+  if (currentFilter === 'promo') list = list.filter(p => p.promo);
+  else if (currentFilter === 'cheap') list = list.filter(p => p.vsAvgPct && p.vsAvgPct < -5);
+  else if (currentFilter === 'drop') list = list.filter(p => p.changePct && p.changePct < 0);
+
+  list = [...list];
+  if (currentSort === 'name') list.sort((a,b) => a.name.localeCompare(b.name, 'he'));
+  else if (currentSort === 'price_asc') list.sort((a,b) => a.price - b.price);
+  else if (currentSort === 'price_desc') list.sort((a,b) => b.price - a.price);
+  else if (currentSort === 'cheap') list.sort((a,b) => (a.vsAvgPct||999) - (b.vsAvgPct||999));
+  else if (currentSort === 'drop') list.sort((a,b) => (a.changePct||0) - (b.changePct||0));
+  return list;
+}
+
+function renderGrid() {
+  const products = getProducts();
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  document.getElementById('results-label').textContent = `${products.length.toLocaleString()} מוצרים`;
+
+  if (!products.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  grid.innerHTML = products.slice(0, 200).map((p, i) => {
+    const hasPromo = !!p.promo;
+    const hasDrop  = p.changePct && p.changePct < -1;
+    const isCheap  = p.vsAvgPct && p.vsAvgPct < -5;
+
+    const badge = hasDrop  ? '<span class="badge badge-drop">📉 ירד במחיר</span>' :
+                  hasPromo ? '<span class="badge badge-promo">🔥 מבצע</span>' :
+                  isCheap  ? '<span class="badge badge-cheap">💰 זול מהממוצע</span>' : '';
+
+    const price100Block = p.pricePer100 ? `
+      <div class="price100-row">
+        <div>
+          <div class="price100-val">₪${p.pricePer100} ל-100 ${p.unitType === 'ml' ? 'מ"ל' : 'גרם'}</div>
+          <div class="price100-lbl">${p.nSimilar ? `השוואה מ-${p.nSimilar} מוצרים דומים` : 'מחיר מנורמל'}</div>
+        </div>
+        ${p.vsAvgPct !== null && p.vsAvgPct !== undefined ? `
+          <span class="vs-avg-pill ${p.vsAvgPct < 0 ? 'vs-cheaper' : 'vs-expensive'}">
+            ${p.vsAvgPct < 0 ? '↓' : '↑'} ${Math.abs(p.vsAvgPct)}%
+          </span>` : ''}
+      </div>` : '';
+
+    const dropBlock = hasDrop ? `
+      <div class="drop-row">
+        📉 ירד ${Math.abs(p.changePct)}%
+        <span style="color:var(--ink3);font-weight:400;font-size:0.75rem">
+          מ-₪${p.prevPrice} לפני ${p.daysAgo} ימים
+        </span>
+      </div>` : '';
+
+    const promoTag = hasPromo ? `<div class="promo-tag">${p.promo}</div>` : '';
+    const isW = watching.has(p.barcode);
+
+    return `<div class="card" style="animation-delay:${Math.min(i,20)*0.03}s">
+      ${badge}
+      <div class="card-name">${p.name}</div>
+      <div class="card-brand">${p.brand || ''}</div>
+      <div class="price-row">
+        <div class="price-now">₪${p.price.toFixed(2)}</div>
+        ${p.prevPrice ? `<div class="price-prev">₪${p.prevPrice.toFixed(2)}</div>` : ''}
+      </div>
+      <div class="price-unit">${p.unit || ''}</div>
+      ${price100Block}
+      ${dropBlock}
+      ${promoTag}
+      <div class="card-footer">
+        <span>${p.updatedAt ? p.updatedAt.substring(0,10) : ''}</span>
+        <button class="watch-btn ${isW?'on':''}" onclick="toggleWatch('${p.barcode}','${p.name.replace(/'/g,"&#39;")}',this)">
+          ${isW ? '🔔 עוקב' : '+ עקוב'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleWatch(barcode, name, btn) {
+  if (watching.has(barcode)) {
+    watching.delete(barcode);
+    btn.textContent = '+ עקוב';
+    btn.classList.remove('on');
+  } else {
+    watching.add(barcode);
+    btn.textContent = '🔔 עוקב';
+    btn.classList.add('on');
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
