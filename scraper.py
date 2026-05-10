@@ -18,29 +18,34 @@ GH_TOKEN = os.environ.get('GH_TOKEN')
 GH_REPO  = 'fguy10-max/shufersal-tracker'
 GH_API   = 'https://api.github.com'
 
-def github_get_sha(filename):
-    """מחזיר את ה-SHA של קובץ קיים ב-GitHub (נדרש לעדכון)"""
-    url = f'{GH_API}/repos/{GH_REPO}/contents/{filename}'
-    r = requests.get(url, headers={'Authorization': f'token {GH_TOKEN}'})
-    if r.status_code == 200:
-        return r.json()['sha']
-    return None
-
 def github_upload(filename, data):
     """מעלה קובץ JSON ל-GitHub Repository"""
-    content = json.dumps(data, ensure_ascii=False, separators=(',',':')).encode('utf-8')
-    encoded = base64.b64encode(content).decode('utf-8')
-    sha = github_get_sha(filename)
+    content_bytes = json.dumps(data, ensure_ascii=False, separators=(',',':')).encode('utf-8')
+    encoded = base64.b64encode(content_bytes).decode('utf-8')
+    
+    headers = {
+        'Authorization': f'token {GH_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
     url = f'{GH_API}/repos/{GH_REPO}/contents/{filename}'
+    
+    # בדיקה אם הקובץ קיים — לקבלת SHA
+    r = requests.get(url, headers=headers)
     payload = {
-        'message': f'עדכון מחירים {datetime.now().strftime("%Y-%m-%d")}',
+        'message': f'עדכון מחירים {datetime.now().strftime("%Y-%m-%d %H:%M")}',
         'content': encoded,
     }
-    if sha:
-        payload['sha'] = sha
-    r = requests.put(url, json=payload, headers={'Authorization': f'token {GH_TOKEN}'})
-    r.raise_for_status()
-    print(f'✅ הועלה ל-GitHub: {filename} ({len(content)/1024:.0f} KB)')
+    if r.status_code == 200:
+        payload['sha'] = r.json()['sha']
+        print(f'  📝 מעדכן קובץ קיים...')
+    else:
+        print(f'  📄 יוצר קובץ חדש...')
+    
+    r2 = requests.put(url, json=payload, headers=headers)
+    if r2.status_code not in [200, 201]:
+        print(f'  ❌ שגיאה: {r2.status_code} — {r2.text[:200]}')
+        r2.raise_for_status()
+    print(f'✅ הועלה ל-GitHub: {filename} ({len(content_bytes)/1024:.0f} KB)')
 
 # ── הגדרות ──────────────────────────────────────────────
 STORE_ID  = 287
