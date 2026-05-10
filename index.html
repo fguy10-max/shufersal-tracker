@@ -311,6 +311,94 @@ header {
 .empty-icon { font-size:2.5rem; margin-bottom:12px; }
 .empty h3 { font-size:1rem; color:var(--ink2); margin-bottom:6px; }
 
+
+.h-settings {
+  background:none; border:1px solid rgba(255,255,255,0.15); border-radius:8px;
+  color:rgba(255,255,255,0.7); padding:5px 12px; font-family:'Heebo',sans-serif;
+  font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:5px;
+  transition:all 0.15s;
+}
+.h-settings:hover { background:rgba(255,255,255,0.08); color:#fff; }
+
+/* Settings Panel */
+.settings-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.4);
+  z-index:500; opacity:0; pointer-events:none;
+  transition:opacity 0.2s;
+}
+.settings-overlay.open { opacity:1; pointer-events:all; }
+
+.settings-panel {
+  position:fixed; top:0; left:0; bottom:0; width:320px;
+  background:var(--white); z-index:501;
+  transform:translateX(-100%); transition:transform 0.25s ease;
+  display:flex; flex-direction:column; box-shadow:8px 0 32px rgba(0,0,0,0.15);
+}
+.settings-panel.open { transform:translateX(0); }
+
+.sp-header {
+  padding:18px 20px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--ink); color:#fff;
+}
+.sp-header h2 { font-size:1rem; font-weight:700; }
+.sp-close {
+  background:none; border:none; color:rgba(255,255,255,0.6);
+  font-size:1.3rem; cursor:pointer; line-height:1; padding:0 4px;
+  transition:color 0.15s;
+}
+.sp-close:hover { color:#fff; }
+
+.sp-body { flex:1; overflow-y:auto; padding:16px 0; }
+
+.sp-section-title {
+  font-size:0.65rem; font-weight:800; letter-spacing:2px;
+  text-transform:uppercase; color:var(--ink3);
+  padding:12px 20px 8px;
+}
+
+.sp-item {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 20px; cursor:pointer;
+  transition:background 0.12s; user-select:none;
+}
+.sp-item:hover { background:var(--bg); }
+.sp-item-icon { font-size:1.1rem; width:24px; text-align:center; flex-shrink:0; }
+.sp-item-label { flex:1; font-size:0.9rem; color:var(--ink); font-weight:500; }
+.sp-item-count { font-size:0.75rem; color:var(--ink3); }
+
+/* Custom checkbox */
+.sp-check {
+  width:20px; height:20px; border:2px solid var(--border2);
+  border-radius:5px; flex-shrink:0; display:flex; align-items:center;
+  justify-content:center; transition:all 0.12s; background:var(--white);
+}
+.sp-check.checked { background:var(--blue); border-color:var(--blue); }
+.sp-check.checked::after { content:'✓'; color:#fff; font-size:0.75rem; font-weight:800; }
+
+.sp-footer {
+  padding:14px 20px; border-top:1px solid var(--border);
+  display:flex; gap:8px;
+}
+.sp-btn {
+  flex:1; padding:9px; border-radius:var(--r); font-family:'Heebo',sans-serif;
+  font-size:0.85rem; font-weight:700; cursor:pointer; border:none; transition:all 0.12s;
+}
+.sp-btn-primary { background:var(--ink); color:#fff; }
+.sp-btn-primary:hover { background:#333; }
+.sp-btn-secondary { background:var(--bg); color:var(--ink2); border:1px solid var(--border); }
+.sp-btn-secondary:hover { background:var(--border); }
+
+.sp-select-all {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 20px 4px;
+}
+.sp-toggle-all {
+  font-size:0.75rem; font-weight:700; color:var(--blue);
+  background:none; border:none; cursor:pointer; padding:0;
+}
+.sp-toggle-all:hover { text-decoration:underline; }
+
 /* Responsive */
 @media(max-width:720px){
   .layout { grid-template-columns:1fr; }
@@ -340,6 +428,7 @@ header {
   <div class="h-logo">מחירו<em>סקופ</em></div>
   <div class="h-store"><span class="live"></span>שלי גבעתיים שביט</div>
   <div class="h-updated" id="h-updated"></div>
+  <button class="h-settings" onclick="openSettings()">⚙️ הגדרות</button>
 </header>
 
 <div class="layout">
@@ -407,6 +496,29 @@ header {
   </main>
 </div>
 
+<!-- Settings Overlay -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+
+<!-- Settings Panel -->
+<div class="settings-panel" id="settings-panel">
+  <div class="sp-header">
+    <h2>⚙️ הגדרות תצוגה</h2>
+    <button class="sp-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="sp-body">
+    <div class="sp-section-title">קטגוריות להצגה</div>
+    <div class="sp-select-all">
+      <span style="font-size:0.78rem;color:var(--ink3)" id="sp-selected-count"></span>
+      <button class="sp-toggle-all" onclick="toggleAllCats()">בחר / בטל הכל</button>
+    </div>
+    <div id="sp-cats-list"></div>
+  </div>
+  <div class="sp-footer">
+    <button class="sp-btn sp-btn-secondary" onclick="closeSettings()">סגור</button>
+    <button class="sp-btn sp-btn-primary" onclick="applySettings()">החל שינויים</button>
+  </div>
+</div>
+
 <script>
 const DATA_URL = 'https://raw.githubusercontent.com/fguy10-max/shufersal-tracker/main/shufersal_prices.json';
 
@@ -448,11 +560,8 @@ async function boot() {
   }
   prog(80, 'בונה ממשק...');
 
-  catMap = DATA.categories || {};
-  allProducts = [];
-  for (const [cat, items] of Object.entries(catMap)) {
-    items.forEach(p => { p._cat = cat; allProducts.push(p); });
-  }
+  // טעינה ראשונית עם קטגוריות מוסתרות
+  rebuildProducts();
 
   prog(100, 'מוכן!');
   setTimeout(() => {
@@ -712,6 +821,102 @@ function toggleWatch(barcode, btn) {
   localStorage.setItem('mchiroscop_watch', JSON.stringify([...watching]));
   document.getElementById('s-watch').textContent = watching.size;
 }
+
+
+// ── Settings ──────────────────────────────────────────────
+const DEFAULT_HIDDEN = new Set(['baby', 'other']);
+let hiddenCats = new Set(JSON.parse(localStorage.getItem('mchiroscop_hidden') || JSON.stringify([...DEFAULT_HIDDEN])));
+
+function openSettings() {
+  buildSettingsPanel();
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function buildSettingsPanel() {
+  const container = document.getElementById('sp-cats-list');
+  const sorted = Object.entries(catMap).sort((a,b) => b[1].length - a[1].length);
+  
+  container.innerHTML = sorted.map(([cat, items]) => {
+    const m = CAT_META[cat] || {icon:'📦', label:cat};
+    const isChecked = !hiddenCats.has(cat);
+    return `<div class="sp-item" onclick="toggleCat('${cat}')">
+      <span class="sp-item-icon">${m.icon}</span>
+      <span class="sp-item-label">${m.label}</span>
+      <span class="sp-item-count">${items.length} מוצרים</span>
+      <div class="sp-check${isChecked?' checked':''}" id="spcheck-${cat}"></div>
+    </div>`;
+  }).join('');
+  
+  updateSelectedCount();
+}
+
+function toggleCat(cat) {
+  if (hiddenCats.has(cat)) {
+    hiddenCats.delete(cat);
+  } else {
+    hiddenCats.add(cat);
+  }
+  const check = document.getElementById('spcheck-' + cat);
+  if (check) check.className = 'sp-check' + (hiddenCats.has(cat) ? '' : ' checked');
+  updateSelectedCount();
+}
+
+function toggleAllCats() {
+  const allCats = Object.keys(catMap);
+  const allVisible = allCats.every(c => !hiddenCats.has(c));
+  if (allVisible) {
+    // הסתר הכל
+    allCats.forEach(c => hiddenCats.add(c));
+  } else {
+    // הצג הכל
+    hiddenCats.clear();
+  }
+  buildSettingsPanel();
+}
+
+function updateSelectedCount() {
+  const total   = Object.keys(catMap).length;
+  const visible = total - hiddenCats.size;
+  document.getElementById('sp-selected-count').textContent = `${visible} מתוך ${total} קטגוריות מוצגות`;
+}
+
+function applySettings() {
+  localStorage.setItem('mchiroscop_hidden', JSON.stringify([...hiddenCats]));
+  
+  // עדכון allProducts ו-catMap ללא הקטגוריות המוסתרות
+  rebuildProducts();
+  buildSidebar();
+  closeSettings();
+  renderGrid();
+}
+
+function rebuildProducts() {
+  allProducts = [];
+  for (const [cat, items] of Object.entries(DATA.categories || {})) {
+    if (!hiddenCats.has(cat)) {
+      items.forEach(p => { p._cat = cat; allProducts.push(p); });
+    }
+  }
+  // עדכון catMap ללא מוסתרים
+  catMap = {};
+  for (const [cat, items] of Object.entries(DATA.categories || {})) {
+    if (!hiddenCats.has(cat)) {
+      catMap[cat] = items;
+    }
+  }
+  
+  // עדכון סטטיסטיקות
+  const cheapCount = allProducts.filter(p => p.vsAvgPct !== null && p.vsAvgPct < -5).length;
+  document.getElementById('s-total').textContent  = allProducts.length.toLocaleString();
+  document.getElementById('s-cheap').textContent  = cheapCount.toLocaleString();
+}
+
 
 boot();
 </script>
