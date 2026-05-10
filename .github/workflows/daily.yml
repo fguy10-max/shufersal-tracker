@@ -3,7 +3,7 @@ name: 🛒 מחירוסקופ — עדכון יומי
 on:
   schedule:
     - cron: '0 6 * * *'  # כל יום ב-8:00 שעון ישראל (UTC+2)
-  workflow_dispatch:       # הרצה ידנית בלחיצה
+  workflow_dispatch:       # הרצה ידנית
 
 jobs:
   scrape:
@@ -24,4 +24,5 @@ jobs:
       - name: Run scraper
         env:
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: python scraper.py
