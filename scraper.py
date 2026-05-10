@@ -13,6 +13,35 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 import io
 
+# ── GitHub ───────────────────────────────────────────────
+GH_TOKEN = os.environ.get('GH_TOKEN')
+GH_REPO  = 'fguy10-max/shufersal-tracker'
+GH_API   = 'https://api.github.com'
+
+def github_get_sha(filename):
+    """מחזיר את ה-SHA של קובץ קיים ב-GitHub (נדרש לעדכון)"""
+    url = f'{GH_API}/repos/{GH_REPO}/contents/{filename}'
+    r = requests.get(url, headers={'Authorization': f'token {GH_TOKEN}'})
+    if r.status_code == 200:
+        return r.json()['sha']
+    return None
+
+def github_upload(filename, data):
+    """מעלה קובץ JSON ל-GitHub Repository"""
+    content = json.dumps(data, ensure_ascii=False, separators=(',',':')).encode('utf-8')
+    encoded = base64.b64encode(content).decode('utf-8')
+    sha = github_get_sha(filename)
+    url = f'{GH_API}/repos/{GH_REPO}/contents/{filename}'
+    payload = {
+        'message': f'עדכון מחירים {datetime.now().strftime("%Y-%m-%d")}',
+        'content': encoded,
+    }
+    if sha:
+        payload['sha'] = sha
+    r = requests.put(url, json=payload, headers={'Authorization': f'token {GH_TOKEN}'})
+    r.raise_for_status()
+    print(f'✅ הועלה ל-GitHub: {filename} ({len(content)/1024:.0f} KB)')
+
 # ── הגדרות ──────────────────────────────────────────────
 STORE_ID  = 287
 BASE_URL  = 'https://prices.shufersal.co.il'
@@ -276,8 +305,6 @@ def main():
     # עדכון היסטוריה
     new, updated = update_history(history, all_products)
     print(f'📅 {new} מוצרים חדשים | {updated} מחירים נוספו')
-    write_to_drive(service, folder_id, HISTORY_FILENAME, history)
-
     # ירידות + השוואה
     drops, rises = [], []
     for p in all_products:
@@ -316,7 +343,11 @@ def main():
         'rises':          sorted(rises, key=lambda x: -x['changePct'])[:50],
     }
 
-    write_to_drive(service, folder_id, PRICES_FILENAME, output)
+    # היסטוריה נשמרת ב-Drive
+    write_to_drive(service, folder_id, HISTORY_FILENAME, history)
+
+    # מחירים מועלים ל-GitHub לאפליקציה
+    github_upload('shufersal_prices.json', output)
     print(f'\n🎉 סיום! {len(all_products):,} מוצרים | {len(drops)} ירידות | {len(all_dates)} ימי היסטוריה')
 
 if __name__ == '__main__':
