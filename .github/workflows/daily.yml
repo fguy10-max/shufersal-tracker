@@ -1,0 +1,27 @@
+name: 🛒 מחירוסקופ — עדכון יומי
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # כל יום ב-8:00 שעון ישראל (UTC+2)
+  workflow_dispatch:       # הרצה ידנית בלחיצה
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests lxml beautifulsoup4 google-auth google-api-python-client
+
+      - name: Run scraper
+        env:
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+        run: python scraper.py
