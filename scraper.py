@@ -16,7 +16,7 @@ import io
 STORES = [
     {'id':'sheli_shabit','name':'שלי גבעתיים שביט','short':'שלי שביט','source':'shufersal','store_id':287},
     {'id':'express_histadrut','name':'שופרסל אקספרס ההסתדרות','short':'אקספרס','source':'shufersal','store_id':599},
-    {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_name_filter':'סיטי מרקט גבעתיים'},
+    {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_name_filter':'2 גבעתיים'},
 ]
 
 TODAY   = datetime.now().strftime('%Y-%m-%d')
@@ -172,29 +172,59 @@ def scrape_shufersal(store_id):
     return products, {}
 
 def scrape_citymarket(store_name_filter):
-    r = session.get(CITYMARKET_BASE, timeout=30); r.raise_for_status()
-    soup = BeautifulSoup(r.text, 'html.parser')
+    """
+    האתר מציג קבצים בטבלה לפי סניף נבחר.
+    נעבור על כל הדפים ונחפש שורות שמכילות את שם הסניף.
+    """
     price_url = promo_url = None
-    for row in soup.find_all('tr'):
-        cells = row.find_all('td')
-        if len(cells) < 4 or store_name_filter not in row.get_text(): continue
-        link = row.find('a', href=True)
-        if not link: continue
-        href = link['href']
-        if not href.startswith('http'): href = CITYMARKET_BASE + href
-        file_type = cells[2].get_text().strip() if len(cells) > 2 else ''
-        is_full = 'מלא' in (cells[4].get_text() if len(cells) > 4 else '')
-        if 'Prices' in file_type or 'מחירים' in file_type:
-            if not price_url or is_full: price_url = href
-        elif 'Promotions' in file_type or 'מבצעים' in file_type:
-            if not promo_url or is_full: promo_url = href
+
+    # עובר על עמודים 1-5
+    for page in range(1, 6):
+        url = f'{CITYMARKET_BASE}/?p={page}&s=&f=&t=&d='
+        try:
+            r = session.get(url, timeout=30)
+            r.raise_for_status()
+        except:
+            break
+        soup = BeautifulSoup(r.text, 'html.parser')
+        rows = soup.find_all('tr')
+        if not rows:
+            break
+        for row in rows:
+            cells = row.find_all('td')
+            if len(cells) < 4:
+                continue
+            row_text = row.get_text()
+            if store_name_filter not in row_text:
+                continue
+            link = row.find('a', href=True)
+            if not link:
+                continue
+            href = link['href']
+            if not href.startswith('http'):
+                href = CITYMARKET_BASE + href
+            # סוג קובץ מהתא השלישי
+            file_type = cells[2].get_text().strip() if len(cells) > 2 else ''
+            is_full   = 'מלא' in (cells[4].get_text() if len(cells) > 4 else '')
+            if 'Prices' in file_type or 'Price' in file_type:
+                if not price_url or is_full:
+                    price_url = href
+                    print(f'    נמצא מחירים: {href.split("/")[-1][:50]}')
+            elif 'Promo' in file_type:
+                if not promo_url or is_full:
+                    promo_url = href
+
+        if price_url:  # נמצא — אפשר לעצור
+            break
+
     if not price_url:
-        print('  לא נמצא קובץ מחירים')
+        print(f'  ⚠️ לא נמצא קובץ מחירים עבור: {store_name_filter}')
         return [], {}
+
     products = extract_items(safe_parse_xml(download_content(price_url)))
     print(f'  {len(products):,} מוצרים')
     if promo_url:
-        pd = extract_promos(safe_parse_xml(download_content(promo_url)))
+        pd  = extract_promos(safe_parse_xml(download_content(promo_url)))
         cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
         print(f'  {cnt} מבצעים')
     return products, {}
