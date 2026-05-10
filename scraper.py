@@ -16,7 +16,7 @@ import io
 STORES = [
     {'id':'sheli_shabit','name':'שלי גבעתיים שביט','short':'שלי שביט','source':'shufersal','store_id':287},
     {'id':'express_histadrut','name':'שופרסל אקספרס ההסתדרות','short':'אקספרס','source':'shufersal','store_id':599},
-    {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_name_filter':'חנויות כללי'},
+    {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_branch':'079'},
 ]
 
 TODAY   = datetime.now().strftime('%Y-%m-%d')
@@ -171,63 +171,79 @@ def scrape_shufersal(store_id):
         print(f'  {cnt} מבצעים')
     return products, {}
 
-def scrape_citymarket(store_name_filter):
+def scrape_citymarket(branch):
     """
-    האתר מציג קבצים בטבלה לפי סניף נבחר.
-    נעבור על כל הדפים ונחפש שורות שמכילות את שם הסניף.
+    מושך מחירים מסיטי מרקט דרך Bina Projects API.
+    branch = מספר סניף (למשל '079')
     """
-    price_url = promo_url = None
+    BINA_BASE = 'https://citymarketkiryatgat.binaprojects.com'
+    API_URL   = f'{BINA_BASE}/MainIO_Hok.aspx'
 
-    # עובר על עמודים 1-5
-    for page in range(1, 6):
-        url = f'{CITYMARKET_BASE}/?p={page}&s=&f=&t=&d='
-        try:
-            r = session.get(url, timeout=30)
-            r.raise_for_status()
-        except:
-            break
-        soup = BeautifulSoup(r.text, 'html.parser')
-        rows = soup.find_all('tr')
-        if not rows:
-            break
-        for row in rows:
-            cells = row.find_all('td')
-            if len(cells) < 4:
-                continue
-            row_text = row.get_text()
-            if store_name_filter not in row_text:
-                continue
-            link = row.find('a', href=True)
-            if not link:
-                continue
-            href = link['href']
-            if not href.startswith('http'):
-                href = CITYMARKET_BASE + href
-            # סוג קובץ מהתא השלישי
-            file_type = cells[2].get_text().strip() if len(cells) > 2 else ''
-            is_full   = 'מלא' in (cells[4].get_text() if len(cells) > 4 else '')
-            if 'Prices' in file_type or 'Price' in file_type:
-                if not price_url or is_full:
-                    price_url = href
-                    print(f'    נמצא מחירים: {href.split("/")[-1][:50]}')
-            elif 'Promo' in file_type:
-                if not promo_url or is_full:
-                    promo_url = href
+    import zipfile, io as _io, json as _json
 
-        if price_url:  # נמצא — אפשר לעצור
-            break
+    def bina_download(filename):
+        """מוריד קובץ ZIP מ-Bina ומחלץ את תוכן ה-XML"""
+        url = f'{BINA_BASE}/{filename}'
+        print(f'    {filename}')
+        r = session.get(url, timeout=120)
+        r.raise_for_status()
+        # הקבצים הם ZIP (לא gzip)
+        with zipfile.ZipFile(_io.BytesIO(r.content)) as z:
+            for name in z.namelist():
+                if name.endswith('.xml'):
+                    data = z.read(name)
+                    for enc in ['utf-8', 'windows-1255', 'iso-8859-8']:
+                        try:
+                            return data.decode(enc)
+                        except:
+                            pass
+                    return data.decode('utf-8', errors='replace')
+        return ''
 
-    if not price_url:
-        print(f'  ⚠️ לא נמצא קובץ מחירים עבור: {store_name_filter}')
+    # קבלת רשימת קבצים לסניף
+    print(f'  מחפש קבצים לסניף {branch}...')
+    price_file = promo_file = None
+
+    for file_type, param in [('מחירים', 2), ('מבצעים', 3)]:
+        r = session.get(API_URL, params={
+            'WFileType': param, 'WStore': 0, 'WBranch': branch
+        }, timeout=30)
+        r.raise_for_status()
+        files = _json.loads(r.text)
+
+        # מסנן לסניף הספציפי ובוחר הכי עדכני
+        branch_files = [
+            f for f in files
+            if f'-{branch}-' in f['FileNm']
+        ]
+        if branch_files:
+            # הכי עדכני = ראשון ברשימה
+            latest = branch_files[0]['FileNm']
+            if file_type == 'מחירים':
+                price_file = latest
+            else:
+                promo_file = latest
+            print(f'  {file_type}: {latest}')
+
+    if not price_file:
+        print(f'  ⚠️ לא נמצא קובץ מחירים')
         return [], {}
 
-    products = extract_items(safe_parse_xml(download_content(price_url)))
+    # הורדה וניתוח
+    xml_text = bina_download(price_file)
+    roots    = safe_parse_xml(xml_text)
+    products = extract_items(roots)
     print(f'  {len(products):,} מוצרים')
-    if promo_url:
-        pd  = extract_promos(safe_parse_xml(download_content(promo_url)))
+
+    if promo_file:
+        xml_promo = bina_download(promo_file)
+        roots_p   = safe_parse_xml(xml_promo)
+        pd        = extract_promos(roots_p)
         cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
         print(f'  {cnt} מבצעים')
+
     return products, {}
+
 
 # Categorize
 def categorize(name, brand):
@@ -336,7 +352,7 @@ def main():
             if store['source'] == 'shufersal':
                 products, _ = scrape_shufersal(store['store_id'])
             else:
-                products, _ = scrape_citymarket(store['store_name_filter'])
+                products, _ = scrape_citymarket(store['store_branch'])
             print(f'  {len(products):,} מוצרים')
             new, upd = update_history(history, store['id'], products)
             print(f'  {new} חדשים | {upd} עודכנו')
