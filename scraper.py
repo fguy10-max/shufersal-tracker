@@ -183,7 +183,7 @@ def scrape_citymarket(branch):
 
     def bina_download(filename):
         """מוריד קובץ מ-Bina — תומך ב-gzip וב-ZIP"""
-        url = f'{BINA_BASE}/MainIO_Hok.aspx?WFileName={filename}'
+        url = f'{BINA_BASE}/download/{filename}'
         print(f'    {filename}')
         r = session.get(url, timeout=120)
         r.raise_for_status()
