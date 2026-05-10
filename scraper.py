@@ -16,7 +16,7 @@ import io
 STORES = [
     {'id':'sheli_shabit','name':'שלי גבעתיים שביט','short':'שלי שביט','source':'shufersal','store_id':287},
     {'id':'express_histadrut','name':'שופרסל אקספרס ההסתדרות','short':'אקספרס','source':'shufersal','store_id':599},
-    {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_name_filter':'2 גבעתיים'},
+    {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_name_filter':'חנויות כללי'},
 ]
 
 TODAY   = datetime.now().strftime('%Y-%m-%d')
@@ -190,12 +190,6 @@ def scrape_citymarket(store_name_filter):
         rows = soup.find_all('tr')
         if not rows:
             break
-        # DEBUG: הדפס שורות שמכילות גבעתיים
-        if page == 1:
-            all_text = [row.get_text().strip()[:80] for row in rows if 'גבעת' in row.get_text()]
-            print(f'    DEBUG עמוד 1 — שורות עם גבעתיים: {len(all_text)}')
-            for t in all_text[:5]:
-                print(f'      {t}')
         for row in rows:
             cells = row.find_all('td')
             if len(cells) < 4:
