@@ -173,51 +173,74 @@ def scrape_shufersal(store_id):
 
 def scrape_citymarket(branch):
     """
-    מושך מחירים מסיטי מרקט דרך Bina Projects API.
-    branch = מספר סניף (למשל '079')
+    סיטי מרקט מפרסמים עדכונים חלקיים בלבד.
+    צוברים את כל הקבצים (מהישן לחדש) לקבלת תמונה מלאה.
     """
     BINA_BASE = 'https://citymarketkiryatgat.binaprojects.com'
     API_URL   = f'{BINA_BASE}/MainIO_Hok.aspx'
 
-    import zipfile, io as _io, json as _json
+    import zipfile, io as _io, json as _json, gzip as _gz
 
-    def bina_download(filename):
-        """מוריד קובץ מ-Bina — תומך ב-gzip וב-ZIP"""
+    def bina_download_raw(filename):
         url = f'{BINA_BASE}/download/{filename}'
         print(f'    {filename}')
         r = session.get(url, timeout=120)
         r.raise_for_status()
         raw = r.content
-
-        def decode_bytes(data):
-            for enc in ['utf-8', 'windows-1255', 'iso-8859-8']:
-                try:
-                    return data.decode(enc)
-                except:
-                    pass
-            return data.decode('utf-8', errors='replace')
-
-        # gzip
-        if raw[:2] == b'\x1f\x8b':
-            import gzip as _gz
-            return decode_bytes(_gz.decompress(raw))
-
         # ZIP
-        try:
+        if raw[:2] == b'PK':
             with zipfile.ZipFile(_io.BytesIO(raw)) as z:
-                for name in z.namelist():
-                    if name.endswith('.xml'):
-                        return decode_bytes(z.read(name))
-        except Exception:
-            pass
+                data = z.read(z.namelist()[0])
+        # gzip
+        elif raw[:2] == b'\x1f\x8b':
+            data = _gz.decompress(raw)
+        else:
+            data = raw
+        for enc in ['utf-8', 'windows-1255', 'iso-8859-8']:
+            try:
+                return data.decode(enc)
+            except:
+                pass
+        return data.decode('utf-8', errors='replace')
 
-        # XML ישיר
-        return decode_bytes(raw)
+    def parse_bina_items(xml_text):
+        roots = safe_parse_xml(xml_text)
+        products = {}
+        for root in roots:
+            for item in root.iter('Item'):
+                def g(tag):
+                    for t in [tag, tag.lower(), tag.capitalize()]:
+                        el = item.find(t)
+                        if el is not None and el.text:
+                            return el.text.strip()
+                    return ''
+                bc        = g('ItemCode') or g('Barcode')
+                name      = g('ItemNm') or g('ItemName') or g('item_name')
+                price_str = g('ItemPrice') or g('Price')
+                unit      = g('UnitOfMeasure') or g('UnitQty')
+                brand     = g('ManufacturerName') or g('ManufacturerItemDescription')
+                updated   = g('PriceUpdateDate')
+                if not bc or not price_str or not name:
+                    continue
+                try:
+                    price = round(float(price_str), 2)
+                    if price <= 0:
+                        continue
+                except:
+                    continue
+                qty, utype = parse_quantity(name)
+                products[bc] = {
+                    'barcode': bc, 'name': name, 'price': price,
+                    'unit': unit, 'unitType': utype, 'qty': qty,
+                    'pricePer100': round(price/qty*100, 2) if qty else None,
+                    'brand': brand, 'updatedAt': updated,
+                    'promo': None, 'promoPrice': None,
+                }
+        return products
 
-
-    # קבלת רשימת קבצים לסניף
+    # קבלת רשימת קבצים
     print(f'  מחפש קבצים לסניף {branch}...')
-    price_file = promo_file = None
+    price_files = promo_files = []
 
     for file_type, param in [('מחירים', 2), ('מבצעים', 3)]:
         r = session.get(API_URL, params={
@@ -225,42 +248,44 @@ def scrape_citymarket(branch):
         }, timeout=30)
         r.raise_for_status()
         files = _json.loads(r.text)
+        branch_files = [f for f in files if f'-{branch}-' in f['FileNm']]
+        if file_type == 'מחירים':
+            price_files = branch_files
+        else:
+            promo_files = branch_files
+        print(f'  {file_type}: {len(branch_files)} קבצים')
 
-        # מסנן לסניף הספציפי ובוחר הכי עדכני
-        branch_files = [
-            f for f in files
-            if f'-{branch}-' in f['FileNm']
-        ]
-        if branch_files:
-            # הכי עדכני = ראשון ברשימה
-            latest = branch_files[0]['FileNm']
-            if file_type == 'מחירים':
-                price_file = latest
-            else:
-                promo_file = latest
-            print(f'  {file_type}: {latest}')
-
-    if not price_file:
-        print(f'  ⚠️ לא נמצא קובץ מחירים')
+    if not price_files:
+        print(f'  ⚠️ לא נמצאו קבצים')
         return [], {}
 
-    # הורדה וניתוח
-    xml_text = bina_download(price_file)
-    roots    = safe_parse_xml(xml_text)
-    products = extract_items(roots)
-    print(f'  {len(products):,} מוצרים')
+    # צבירת כל קבצי המחירים מהישן לחדש
+    all_products = {}
+    for f in reversed(price_files):
+        try:
+            xml_text = bina_download_raw(f['FileNm'])
+            batch = parse_bina_items(xml_text)
+            all_products.update(batch)
+        except Exception as e:
+            print(f'    ⚠️ {f["FileNm"]}: {e}')
 
-    if promo_file:
-        xml_promo = bina_download(promo_file)
-        roots_p   = safe_parse_xml(xml_promo)
-        pd        = extract_promos(roots_p)
-        cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
-        print(f'  {cnt} מבצעים')
+    products = list(all_products.values())
+    print(f'  ✅ {len(products):,} מוצרים ייחודיים')
+
+    # מבצעים — רק הקובץ הכי עדכני
+    if promo_files:
+        try:
+            xml_promo = bina_download_raw(promo_files[0]['FileNm'])
+            roots_p   = safe_parse_xml(xml_promo)
+            pd        = extract_promos(roots_p)
+            cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
+            print(f'  {cnt} מבצעים')
+        except Exception as e:
+            print(f'  ⚠️ מבצעים: {e}')
 
     return products, {}
 
 
-# Categorize
 def categorize(name, brand):
     n = name
     if any(w in n for w in ['קרפרי','חיתול','פמפרס','מוצץ','תינוק','פורמולה']): return 'baby'
