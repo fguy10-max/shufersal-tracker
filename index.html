@@ -4,555 +4,514 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>מחירוסקופ</title>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Noto+Serif+Hebrew:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#f0ede6; --paper:#faf8f4; --white:#fff;
-  --ink:#1a1714; --ink2:#5c564e; --ink3:#a09890; --border:#e2ddd5; --border2:#cec8be;
-  --green:#0f5132; --green2:#198754; --green-bg:#edf7f1;
-  --red:#842029; --red-bg:#fdf0f1;
-  --amber:#856404; --amber-bg:#fff8e6;
-  --blue:#0a3d6e; --blue-bg:#edf3fb;
-  --purple:#5b21b6; --purple-bg:#f5f3ff;
-  --store1:#0a3d6e; --store2:#198754; --store3:#c2410c;
-  --r:10px; --r2:16px;
-  --shadow:0 2px 8px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04);
-  --shadow-lg:0 12px 40px rgba(0,0,0,0.14);
+  --bg: #ffffff;
+  --surface: #f8f8f8;
+  --border: #ebebeb;
+  --border-dark: #d4d4d4;
+  --text: #111111;
+  --text2: #666666;
+  --text3: #aaaaaa;
+  --green: #16a34a;
+  --green-light: #f0fdf4;
+  --red: #dc2626;
+  --red-light: #fef2f2;
+  --amber: #d97706;
+  --amber-light: #fffbeb;
+  --blue: #2563eb;
+  --blue-light: #eff6ff;
+  --store-a: #1d4ed8;
+  --store-b: #15803d;
+  --store-c: #b45309;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
 
-/* ── SPLASH ── */
-#splash{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;transition:opacity 0.5s;}
-#splash.hide{opacity:0;pointer-events:none;}
-.splash-logo{font-family:'Noto Serif Hebrew',serif;font-size:3rem;font-weight:900;color:#fff;letter-spacing:-2px;margin-bottom:8px;}
-.splash-logo em{color:#86efac;font-style:normal;}
-.splash-sub{color:rgba(255,255,255,0.35);font-size:0.8rem;margin-bottom:32px;}
-.splash-bar{width:220px;height:2px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
-.splash-fill{height:100%;background:#86efac;border-radius:2px;width:0;transition:width 0.35s ease;}
-.splash-msg{margin-top:14px;font-size:0.78rem;color:rgba(255,255,255,0.4);}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
 
-/* ── HEADER ── */
-header{background:var(--ink);color:#fff;display:flex;align-items:center;gap:12px;padding:0 20px;height:54px;position:sticky;top:0;z-index:100;}
-.h-logo{font-family:'Noto Serif Hebrew',serif;font-size:1.35rem;font-weight:900;letter-spacing:-0.5px;flex-shrink:0;}
-.h-logo em{color:#86efac;font-style:normal;}
-.h-store{font-size:0.72rem;color:rgba(255,255,255,0.4);display:flex;align-items:center;gap:5px;}
-.live{width:6px;height:6px;border-radius:50%;background:#86efac;animation:blink 2.5s infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
-.h-spacer{flex:1;}
-.h-btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:rgba(255,255,255,0.75);padding:5px 12px;font-family:'Heebo',sans-serif;font-size:0.78rem;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;}
-.h-btn:hover{background:rgba(255,255,255,0.14);color:#fff;}
-.h-btn.active{background:#86efac;border-color:#86efac;color:var(--ink);}
-.cart-count{background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:0.65rem;font-weight:700;}
+/* Splash */
+#splash { position:fixed; inset:0; background:#111; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; transition:opacity 0.4s; }
+#splash.done { opacity:0; pointer-events:none; }
+.sp-logo { font-size:2rem; font-weight:900; color:#fff; letter-spacing:-1px; margin-bottom:6px; }
+.sp-logo em { color:#4ade80; font-style:normal; }
+.sp-sub { color:#555; font-size:0.8rem; margin-bottom:28px; }
+.sp-bar { width:180px; height:2px; background:#222; border-radius:2px; overflow:hidden; }
+.sp-prog { height:100%; background:#4ade80; border-radius:2px; width:0; transition:width 0.3s ease; }
+.sp-msg { margin-top:12px; font-size:0.75rem; color:#444; }
 
-/* ── LAYOUT ── */
-.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 54px);}
+/* Header */
+header { height:52px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:16px; position:sticky; top:0; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); z-index:100; }
+.logo { font-size:1.2rem; font-weight:900; color:var(--text); letter-spacing:-0.5px; flex-shrink:0; }
+.logo em { color:var(--green); font-style:normal; }
+.h-sep { flex:1; }
+.h-pill { display:flex; align-items:center; gap:5px; padding:5px 12px; border:1px solid var(--border); border-radius:20px; font-size:0.78rem; color:var(--text2); cursor:pointer; background:var(--bg); transition:all 0.15s; white-space:nowrap; }
+.h-pill:hover { border-color:var(--border-dark); color:var(--text); }
+.h-pill.active { background:var(--text); color:#fff; border-color:var(--text); }
+.badge-count { background:var(--red); color:#fff; font-size:0.65rem; font-weight:700; padding:1px 5px; border-radius:10px; }
 
-/* ── SIDEBAR ── */
-.sidebar{background:var(--paper);border-left:1px solid var(--border);position:sticky;top:54px;height:calc(100vh - 54px);overflow-y:auto;padding:16px 0;}
-.sb-sec{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);padding:12px 16px 6px;}
-.cat{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;font-size:0.88rem;color:var(--ink2);font-weight:500;border-right:3px solid transparent;transition:all 0.12s;}
-.cat:hover{background:var(--bg);color:var(--ink);}
-.cat.on{background:var(--blue-bg);color:var(--blue);border-right-color:var(--blue);font-weight:700;}
-.cat-icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
-.cat-name{flex:1;}
-.cat-badge{font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:8px;}
-.pill-deal{background:var(--amber-bg);color:var(--amber);}
-.pill-cheap{background:var(--green-bg);color:var(--green2);}
-.pill-n{color:var(--ink3);}
+/* Layout */
+.app { display:grid; grid-template-columns:200px 1fr; height:calc(100vh - 52px); }
 
-/* ── CONTENT ── */
-.content{padding:20px 24px;min-width:0;}
+/* Sidebar */
+.sidebar { border-left:1px solid var(--border); overflow-y:auto; padding:12px 0; }
+.sb-label { font-size:0.65rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); padding:12px 16px 6px; }
+.cat-item { display:flex; align-items:center; gap:8px; padding:7px 14px; cursor:pointer; border-radius:0; transition:background 0.1s; position:relative; font-size:0.85rem; color:var(--text2); border-right:2px solid transparent; }
+.cat-item:hover { background:var(--surface); color:var(--text); }
+.cat-item.active { background:var(--blue-light); color:var(--blue); border-right-color:var(--blue); font-weight:600; }
+.cat-icon { width:18px; text-align:center; font-size:0.95rem; flex-shrink:0; }
+.cat-label { flex:1; }
+.cat-count { font-size:0.7rem; color:var(--text3); }
+.cat-badge { font-size:0.65rem; font-weight:700; padding:1px 6px; border-radius:8px; }
+.cb-deal { background:var(--amber-light); color:var(--amber); }
+.cb-cheap { background:var(--green-light); color:var(--green); }
 
-/* ── TABS ── */
-.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--paper);border:1px solid var(--border);border-radius:var(--r);padding:4px;width:fit-content;}
-.tab{padding:7px 18px;border-radius:7px;font-size:0.83rem;font-weight:600;cursor:pointer;color:var(--ink2);transition:all 0.15s;border:none;background:none;}
-.tab.on{background:var(--ink);color:#fff;}
-.tab:hover:not(.on){background:var(--bg);}
+/* Main */
+.main { overflow-y:auto; }
 
-/* ── STATS ── */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-.stat{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);}
-.stat-n{font-family:'Noto Serif Hebrew',serif;font-size:1.8rem;font-weight:900;line-height:1;}
-.stat-l{font-size:0.75rem;color:var(--ink2);margin-top:3px;}
-.stat.s-blue .stat-n{color:var(--blue);}
-.stat.s-green .stat-n{color:var(--green2);}
-.stat.s-amber .stat-n{color:var(--amber);}
-.stat.s-purple .stat-n{color:var(--purple);}
+/* Top bar */
+.topbar { padding:16px 20px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.topbar-title { font-size:1.1rem; font-weight:700; flex:1; }
+.filter-row { display:flex; gap:6px; flex-wrap:wrap; }
+.fchip { padding:5px 12px; border-radius:20px; font-size:0.78rem; font-weight:500; cursor:pointer; border:1px solid var(--border); background:var(--bg); color:var(--text2); transition:all 0.12s; white-space:nowrap; }
+.fchip:hover { border-color:var(--border-dark); color:var(--text); }
+.fchip.on { background:var(--text); color:#fff; border-color:var(--text); }
+.fchip.on-deal { background:var(--amber); color:#fff; border-color:var(--amber); }
+.fchip.on-cheap { background:var(--green); color:#fff; border-color:var(--green); }
+.fchip.on-compare { background:var(--blue); color:#fff; border-color:var(--blue); }
+.fchip.on-watch { background:#7c3aed; color:#fff; border-color:#7c3aed; }
 
-/* ── STORE LEGEND ── */
-.store-legend{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
-.store-pill{display:flex;align-items:center;gap:6px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:0.78rem;font-weight:600;}
-.store-dot{width:8px;height:8px;border-radius:50%;}
+/* Search row */
+.search-row { padding:10px 20px; display:flex; gap:8px; align-items:center; }
+.search-box { flex:1; position:relative; }
+.search-box input { width:100%; padding:8px 14px 8px 34px; border:1px solid var(--border); border-radius:8px; font-family:'Heebo',sans-serif; font-size:0.88rem; color:var(--text); background:var(--surface); outline:none; transition:border-color 0.15s; }
+.search-box input:focus { border-color:var(--border-dark); background:var(--bg); }
+.search-box input::placeholder { color:var(--text3); }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:0.85rem; color:var(--text3); pointer-events:none; }
+.sort-select { padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-family:'Heebo',sans-serif; font-size:0.82rem; color:var(--text2); background:var(--surface); outline:none; cursor:pointer; }
+.view-toggle { display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.view-btn { width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:var(--surface); border:none; color:var(--text3); font-size:0.85rem; transition:all 0.12s; }
+.view-btn.on { background:var(--text); color:#fff; }
 
-/* ── CONTROLS ── */
-.controls{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
-.page-title{font-family:'Noto Serif Hebrew',serif;font-size:1.3rem;font-weight:700;flex:1;}
-.filters{display:flex;gap:6px;flex-wrap:wrap;}
-.fc{padding:6px 13px;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--ink2);transition:all 0.12s;white-space:nowrap;}
-.fc:hover{border-color:var(--border2);color:var(--ink);}
-.fc.on-all{background:var(--ink);border-color:var(--ink);color:#fff;}
-.fc.on-deal{background:var(--amber);border-color:var(--amber);color:#fff;}
-.fc.on-cheap{background:var(--green2);border-color:var(--green2);color:#fff;}
-.fc.on-drop{background:var(--blue);border-color:var(--blue);color:#fff;}
-.fc.on-watch{background:var(--purple);border-color:var(--purple);color:#fff;}
-.fc.on-compare{background:var(--store3);border-color:var(--store3);color:#fff;}
+/* Stats strip */
+.stats-strip { display:flex; gap:0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin:0 20px 16px; border-radius:8px; overflow:hidden; }
+.stat-item { flex:1; padding:10px 14px; text-align:center; border-left:1px solid var(--border); }
+.stat-item:last-child { border-left:none; }
+.stat-n { font-size:1.2rem; font-weight:700; line-height:1; }
+.stat-l { font-size:0.65rem; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:0.5px; }
 
-.search-sort{display:flex;gap:10px;margin-bottom:14px;}
-.search-wrap{position:relative;flex:1;}
-.search-wrap input{width:100%;padding:9px 14px 9px 36px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Heebo',sans-serif;font-size:0.9rem;background:var(--white);color:var(--ink);outline:none;transition:border-color 0.15s;}
-.search-wrap input:focus{border-color:var(--blue);}
-.search-wrap input::placeholder{color:var(--ink3);}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:0.9rem;color:var(--ink3);pointer-events:none;}
-.sort-sel{padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Heebo',sans-serif;font-size:0.82rem;color:var(--ink2);background:var(--white);outline:none;cursor:pointer;}
-.view-btns{display:flex;gap:4px;}
-.vbtn{width:34px;height:34px;border:1.5px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.9rem;color:var(--ink3);transition:all 0.12s;}
-.vbtn.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+/* Store tags */
+.store-tags { display:flex; gap:8px; padding:0 20px 14px; flex-wrap:wrap; }
+.store-tag { display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--text2); }
+.store-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-.results-meta{font-size:0.78rem;color:var(--ink3);margin-bottom:12px;}
+/* Results meta */
+.results-meta { padding:0 20px 10px; font-size:0.75rem; color:var(--text3); }
 
-/* ── GRID ── */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
-.list-view{display:flex;flex-direction:column;gap:8px;}
+/* Grid */
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:1px; background:var(--border); padding:0 20px 20px; }
+.grid .card { background:var(--bg); }
 
-/* ── CARD ── */
-.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);transition:transform 0.15s,box-shadow 0.15s,border-color 0.15s;animation:fadeUp 0.22s ease both;cursor:pointer;position:relative;}
-.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--border2);}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.card.list-card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:16px;}
+/* List */
+.list-view { padding:0 20px 20px; display:flex; flex-direction:column; gap:0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); border-radius:0; }
 
-.card-badges{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;min-height:20px;}
-.badge{font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;padding:2px 7px;border-radius:5px;}
-.b-deal{background:var(--amber-bg);color:var(--amber);}
-.b-cheap{background:var(--green-bg);color:var(--green2);}
-.b-drop{background:var(--blue-bg);color:var(--blue);}
-.b-compare{background:#fff0f0;color:var(--store3);}
+/* Card — Grid */
+.card { background:var(--bg); padding:16px; cursor:pointer; transition:background 0.1s; animation:fadeIn 0.2s ease both; position:relative; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.card:hover { background:var(--surface); }
 
-.card-name{font-weight:700;font-size:0.92rem;line-height:1.3;margin-bottom:2px;}
-.card-brand{font-size:0.75rem;color:var(--ink3);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.price-big{font-family:'Noto Serif Hebrew',serif;font-size:2rem;font-weight:900;line-height:1;}
-.price-unit{font-size:0.73rem;color:var(--ink2);margin-top:2px;margin-bottom:8px;}
+.card-top { margin-bottom:10px; }
+.card-store { font-size:0.7rem; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:4px; }
+.card-name { font-size:0.9rem; font-weight:600; line-height:1.35; color:var(--text); margin-bottom:2px; }
+.card-brand { font-size:0.75rem; color:var(--text3); }
 
-/* מחיר ל-100 */
-.p100-row{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:7px;padding:6px 10px;margin-bottom:8px;}
-.p100-val{font-size:0.8rem;font-weight:700;}
-.p100-lbl{font-size:0.68rem;color:var(--ink3);}
-.vs-chip{font-size:0.7rem;font-weight:800;padding:2px 7px;border-radius:8px;}
-.vs-cheap{background:var(--green-bg);color:var(--green2);}
-.vs-exp{background:var(--red-bg);color:var(--red);}
+.card-price { display:flex; align-items:baseline; gap:6px; margin:8px 0; }
+.price-main { font-size:1.6rem; font-weight:700; line-height:1; color:var(--text); }
+.price-unit { font-size:0.75rem; color:var(--text3); }
+.price-prev { font-size:0.82rem; color:var(--text3); text-decoration:line-through; }
 
-/* השוואת סניפים בכרטיס */
-.store-compare{margin-bottom:8px;}
-.store-row{display:flex;align-items:center;gap:6px;padding:3px 0;}
-.store-row-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-.store-row-name{font-size:0.75rem;color:var(--ink2);flex:1;}
-.store-row-price{font-size:0.82rem;font-weight:700;}
-.store-row-price.best{color:var(--green2);}
-.store-row-price.worst{color:var(--red);}
-.store-row-diff{font-size:0.68rem;color:var(--ink3);}
+/* Tags under price */
+.card-tags { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; }
+.tag { font-size:0.68rem; font-weight:600; padding:2px 7px; border-radius:4px; }
+.tag-deal { background:var(--amber-light); color:var(--amber); }
+.tag-drop { background:var(--blue-light); color:var(--blue); }
+.tag-cheap { background:var(--green-light); color:var(--green); }
 
-/* Drop */
-.drop-row{display:flex;align-items:center;gap:5px;font-size:0.78rem;font-weight:700;color:var(--blue);margin-bottom:6px;}
-.drop-was{font-weight:400;color:var(--ink3);font-size:0.72rem;}
+/* Normalized price */
+.norm-price { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:var(--surface); border-radius:6px; margin-bottom:8px; }
+.norm-val { font-size:0.78rem; font-weight:600; color:var(--text); }
+.norm-lbl { font-size:0.68rem; color:var(--text3); }
+.norm-vs { font-size:0.7rem; font-weight:700; padding:2px 6px; border-radius:6px; }
+.vs-low { background:var(--green-light); color:var(--green); }
+.vs-high { background:var(--red-light); color:var(--red); }
 
-/* Promo */
-.promo-tag{background:var(--amber-bg);color:var(--amber);font-size:0.73rem;font-weight:600;padding:4px 10px;border-radius:6px;margin-bottom:6px;line-height:1.3;border:1px solid rgba(133,100,4,0.15);}
+/* Store compare in card */
+.store-compare { border-top:1px solid var(--border); padding-top:8px; margin-top:4px; }
+.sc-row { display:flex; align-items:center; gap:6px; padding:2px 0; }
+.sc-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.sc-name { font-size:0.73rem; color:var(--text2); flex:1; }
+.sc-price { font-size:0.78rem; font-weight:600; }
+.sc-best { color:var(--green); }
+.sc-worst { color:var(--red); }
+.sc-na { color:var(--text3); font-style:italic; font-weight:400; }
+.sc-diff { font-size:0.65rem; color:var(--text3); }
 
-.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
-.updated{font-size:0.68rem;color:var(--ink3);}
-.card-actions{display:flex;gap:6px;}
-.act-btn{font-size:0.72rem;font-weight:700;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;transition:all 0.12s;color:var(--ink2);}
-.act-btn:hover{border-color:var(--ink2);color:var(--ink);}
-.act-btn.watch-on{border-color:var(--purple);color:var(--purple);background:var(--purple-bg);}
-.act-btn.cart-on{border-color:var(--green2);color:var(--green2);background:var(--green-bg);}
+/* Card footer */
+.card-footer { display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.card-date { font-size:0.68rem; color:var(--text3); }
+.card-actions { display:flex; gap:4px; }
+.action-btn { padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--bg); color:var(--text2); transition:all 0.12s; }
+.action-btn:hover { border-color:var(--border-dark); color:var(--text); }
+.action-btn.on-watch { background:#f5f3ff; color:#7c3aed; border-color:#7c3aed; }
+.action-btn.on-cart { background:var(--green-light); color:var(--green); border-color:var(--green); }
 
-/* ── SHOPPING LIST PANEL ── */
-.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;opacity:0;pointer-events:none;transition:opacity 0.2s;}
-.panel-overlay.open{opacity:1;pointer-events:all;}
-.panel{position:fixed;top:0;left:0;bottom:0;width:380px;background:var(--white);z-index:501;transform:translateX(-100%);transition:transform 0.25s ease;display:flex;flex-direction:column;box-shadow:8px 0 32px rgba(0,0,0,0.15);}
-.panel.open{transform:translateX(0);}
-.panel-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--ink);color:#fff;flex-shrink:0;}
-.panel-head h2{font-size:1rem;font-weight:700;}
-.panel-close{background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.3rem;cursor:pointer;padding:0 4px;line-height:1;}
-.panel-close:hover{color:#fff;}
-.panel-body{flex:1;overflow-y:auto;padding:16px;}
-.panel-foot{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0;}
+/* List card */
+.list-card { display:grid; grid-template-columns:1fr auto; gap:16px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
+.list-card:last-child { border-bottom:none; }
+.list-card:hover { background:var(--surface); margin:0 -20px; padding:12px 20px; }
 
-/* רשימת קניות */
-.cart-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--r);margin-bottom:8px;}
-.cart-item-name{flex:1;font-size:0.88rem;font-weight:600;line-height:1.3;}
-.cart-item-price{font-size:0.9rem;font-weight:700;color:var(--green2);white-space:nowrap;}
-.cart-item-del{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:1rem;padding:2px;}
-.cart-item-del:hover{color:var(--red);}
-.cart-qty{display:flex;align-items:center;gap:6px;}
-.qty-btn{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--white);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;color:var(--ink2);}
-.qty-btn:hover{background:var(--bg);}
-.qty-num{font-size:0.82rem;font-weight:700;min-width:16px;text-align:center;}
+/* Cart drawer */
+.drawer-bg { position:fixed; inset:0; background:rgba(0,0,0,0.3); z-index:500; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+.drawer-bg.open { opacity:1; pointer-events:all; }
+.drawer { position:fixed; top:0; left:0; bottom:0; width:360px; background:var(--bg); z-index:501; transform:translateX(-100%); transition:transform 0.25s ease; display:flex; flex-direction:column; border-right:1px solid var(--border); }
+.drawer.open { transform:translateX(0); }
+.drawer-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.drawer-head h2 { font-size:1rem; font-weight:700; }
+.drawer-close { background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text3); padding:2px; }
+.drawer-close:hover { color:var(--text); }
+.drawer-body { flex:1; overflow-y:auto; padding:16px; }
+.drawer-foot { padding:14px 16px; border-top:1px solid var(--border); }
 
-/* סיכום השוואה */
-.compare-summary{background:var(--bg);border-radius:var(--r);padding:14px;margin-bottom:12px;}
-.compare-summary h3{font-size:0.85rem;font-weight:700;margin-bottom:10px;color:var(--ink2);}
-.compare-store-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);}
-.compare-store-row:last-child{border-bottom:none;}
-.compare-store-name{display:flex;align-items:center;gap:7px;font-size:0.85rem;font-weight:600;}
-.compare-store-total{font-family:'Noto Serif Hebrew',serif;font-size:1.2rem;font-weight:900;}
-.compare-store-total.best{color:var(--green2);}
-.compare-store-missing{font-size:0.7rem;color:var(--ink3);}
-.compare-winner{background:var(--green-bg);border:1px solid var(--green2);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:8px;margin-top:10px;font-size:0.85rem;font-weight:600;color:var(--green);}
+.cart-row { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+.cart-row:last-child { border-bottom:none; }
+.cart-info { flex:1; min-width:0; }
+.cart-name { font-size:0.85rem; font-weight:600; line-height:1.3; margin-bottom:2px; }
+.cart-store { font-size:0.7rem; color:var(--text3); }
+.cart-qty-ctrl { display:flex; align-items:center; gap:6px; margin-top:4px; }
+.qty-btn { width:20px; height:20px; border-radius:50%; border:1px solid var(--border); background:var(--bg); cursor:pointer; font-size:0.85rem; display:flex; align-items:center; justify-content:center; color:var(--text2); }
+.qty-num { font-size:0.8rem; font-weight:700; min-width:16px; text-align:center; }
+.cart-price { font-weight:700; font-size:0.9rem; white-space:nowrap; }
+.cart-del { background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.9rem; padding:2px; }
+.cart-del:hover { color:var(--red); }
 
-/* ── PRODUCT MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:600;opacity:0;pointer-events:none;transition:opacity 0.2s;display:flex;align-items:flex-end;justify-content:center;}
-.modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--white);border-radius:var(--r2) var(--r2) 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s ease;padding:24px;}
-.modal-overlay.open .modal{transform:translateY(0);}
-.modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
-.modal-title{font-family:'Noto Serif Hebrew',serif;font-size:1.3rem;font-weight:700;line-height:1.3;flex:1;}
-.modal-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--ink3);padding:0 4px;}
-.modal-section{margin-bottom:20px;}
-.modal-section h3{font-size:0.72rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;}
+/* Compare box */
+.compare-box { background:var(--surface); border-radius:8px; padding:12px; margin-bottom:12px; }
+.compare-box h3 { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:10px; }
+.compare-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); }
+.compare-row:last-child { border-bottom:none; }
+.compare-left { display:flex; align-items:center; gap:7px; }
+.compare-name { font-size:0.83rem; font-weight:600; }
+.compare-items { font-size:0.68rem; color:var(--text3); }
+.compare-items.warn { color:var(--amber); }
+.compare-price { font-size:1rem; font-weight:700; }
+.compare-price.best { color:var(--green); }
+.winner-row { background:var(--green-light); border-radius:6px; padding:8px 12px; display:flex; align-items:center; gap:6px; margin-top:8px; font-size:0.82rem; font-weight:600; color:var(--green); }
 
-/* טבלת השוואה במודל */
-.compare-table{width:100%;border-collapse:collapse;}
-.compare-table th{text-align:right;font-size:0.75rem;color:var(--ink3);font-weight:600;padding:6px 10px;border-bottom:2px solid var(--border);}
-.compare-table td{padding:10px;border-bottom:1px solid var(--border);font-size:0.88rem;}
-.compare-table tr:last-child td{border-bottom:none;}
-.compare-table tr.best-row td{background:var(--green-bg);}
-.store-tag{display:flex;align-items:center;gap:6px;font-weight:600;}
+/* Modal */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:600; opacity:0; pointer-events:none; transition:opacity 0.2s; display:flex; align-items:flex-end; justify-content:center; }
+.modal-bg.open { opacity:1; pointer-events:all; }
+.modal { background:var(--bg); border-radius:16px 16px 0 0; width:100%; max-width:560px; max-height:80vh; overflow-y:auto; transform:translateY(100%); transition:transform 0.3s ease; padding:20px; }
+.modal-bg.open .modal { transform:translateY(0); }
+.modal-drag { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+.modal-title { font-size:1.1rem; font-weight:700; line-height:1.3; margin-bottom:4px; }
+.modal-brand { font-size:0.78rem; color:var(--text3); margin-bottom:16px; }
+.modal-sec { margin-bottom:16px; }
+.modal-sec-label { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:8px; }
+.compare-tbl { width:100%; border-collapse:collapse; }
+.compare-tbl th { text-align:right; font-size:0.72rem; color:var(--text3); font-weight:600; padding:6px 8px; border-bottom:2px solid var(--border); }
+.compare-tbl td { padding:9px 8px; border-bottom:1px solid var(--border); font-size:0.85rem; }
+.compare-tbl tr:last-child td { border-bottom:none; }
+.compare-tbl tr.best td { background:var(--green-light); }
+.tbl-store { display:flex; align-items:center; gap:6px; font-weight:500; }
+.tbl-price { font-weight:700; }
+.tbl-best { color:var(--green); }
 
-/* גרף היסטורי פשוט */
-.history-chart{height:80px;position:relative;margin-top:8px;}
-.history-line{position:absolute;bottom:0;left:0;right:0;height:100%;}
-.h-point{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--blue);border:2px solid var(--white);box-shadow:var(--shadow);transform:translate(-50%,50%);}
-.h-label{position:absolute;font-size:0.65rem;color:var(--ink3);transform:translateX(-50%);top:-18px;white-space:nowrap;}
-.h-price{position:absolute;font-size:0.68rem;font-weight:700;color:var(--blue);transform:translate(-50%,-100%);margin-top:-6px;white-space:nowrap;}
+/* Settings drawer */
+.settings-drawer { position:fixed; top:0; right:0; bottom:0; width:280px; background:var(--bg); z-index:502; transform:translateX(100%); transition:transform 0.25s; display:flex; flex-direction:column; border-left:1px solid var(--border); }
+.settings-drawer.open { transform:translateX(0); }
+.sd-item { display:flex; align-items:center; gap:10px; padding:10px 16px; cursor:pointer; transition:background 0.1s; }
+.sd-item:hover { background:var(--surface); }
+.sd-icon { width:20px; text-align:center; }
+.sd-label { flex:1; font-size:0.85rem; }
+.sd-count { font-size:0.7rem; color:var(--text3); }
+.checkbox { width:18px; height:18px; border:1.5px solid var(--border-dark); border-radius:4px; display:flex; align-items:center; justify-content:center; transition:all 0.12s; flex-shrink:0; }
+.checkbox.on { background:var(--blue); border-color:var(--blue); }
+.checkbox.on::after { content:'✓'; color:#fff; font-size:0.7rem; font-weight:800; }
 
-/* ── SETTINGS PANEL ── */
-.settings-panel{position:fixed;top:0;right:0;bottom:0;width:300px;background:var(--white);z-index:502;transform:translateX(100%);transition:transform 0.25s;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,0.15);}
-.settings-panel.open{transform:translateX(0);}
-.sp-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--ink);color:#fff;flex-shrink:0;}
-.sp-body{flex:1;overflow-y:auto;padding:8px 0;}
-.sp-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:background 0.12s;}
-.sp-item:hover{background:var(--bg);}
-.sp-icon{font-size:1rem;width:22px;text-align:center;}
-.sp-label{flex:1;font-size:0.88rem;color:var(--ink);}
-.sp-count{font-size:0.72rem;color:var(--ink3);}
-.sp-check{width:20px;height:20px;border:2px solid var(--border2);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.12s;}
-.sp-check.on{background:var(--blue);border-color:var(--blue);}
-.sp-check.on::after{content:'✓';color:#fff;font-size:0.75rem;font-weight:800;}
-.sp-foot{padding:14px 16px;border-top:1px solid var(--border);}
-.sp-btn{width:100%;padding:10px;border-radius:var(--r);font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:none;background:var(--ink);color:#fff;transition:background 0.15s;}
-.sp-btn:hover{background:#333;}
+/* Empty */
+.empty-state { text-align:center; padding:60px 20px; color:var(--text3); }
+.empty-state .ei { font-size:2.5rem; margin-bottom:10px; }
 
-/* ── EMPTY ── */
-.empty{text-align:center;padding:60px 20px;color:var(--ink2);}
-.empty-icon{font-size:2.5rem;margin-bottom:12px;}
-
-/* ── RESPONSIVE ── */
-@media(max-width:750px){
-  .layout{grid-template-columns:1fr;}
-  .sidebar{position:static;height:auto;overflow-x:auto;overflow-y:hidden;white-space:nowrap;display:flex;border-bottom:1px solid var(--border);padding:6px 0;}
-  .cat{display:inline-flex;border-right:none;border-bottom:3px solid transparent;padding:7px 12px;}
-  .cat.on{border-bottom-color:var(--blue);border-right:none;background:transparent;}
-  .sb-sec{display:none;}
-  .stats{grid-template-columns:1fr 1fr;}
-  .content{padding:14px;}
-  header{padding:0 12px;gap:8px;}
-  .h-btn span{display:none;}
-  .panel{width:100%;}
-  .settings-panel{width:100%;}
-  .grid{grid-template-columns:1fr 1fr;gap:10px;}
-  .tabs{overflow-x:auto;}
+/* Responsive */
+@media(max-width:720px){
+  .app { grid-template-columns:1fr; }
+  .sidebar { position:fixed; bottom:0; left:0; right:0; top:auto; height:auto; border-left:none; border-top:1px solid var(--border); display:flex; overflow-x:auto; overflow-y:hidden; z-index:50; background:var(--bg); padding:6px 0; }
+  .cat-item { display:inline-flex; flex-direction:column; border-right:none; border-top:2px solid transparent; padding:6px 12px; font-size:0.75rem; white-space:nowrap; align-items:center; gap:2px; }
+  .cat-item.active { border-top-color:var(--blue); border-right:none; background:transparent; }
+  .cat-count, .cat-badge { display:none; }
+  .sb-label { display:none; }
+  .main { padding-bottom:60px; }
+  .grid { grid-template-columns:1fr 1fr; padding:0 12px 80px; }
+  header { padding:0 12px; }
+  .drawer { width:100%; }
+  .settings-drawer { width:100%; }
+  .topbar,.search-row,.store-tags,.results-meta { padding-left:12px; padding-right:12px; }
+  .stats-strip { margin:0 12px 12px; }
 }
-@media(max-width:420px){.grid{grid-template-columns:1fr;}}
+@media(max-width:400px) { .grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 
 <div id="splash">
-  <div class="splash-logo">מחירו<em>סקופ</em></div>
-  <div class="splash-sub">גבעתיים · 3 סניפים</div>
-  <div class="splash-bar"><div class="splash-fill" id="prog"></div></div>
-  <div class="splash-msg" id="splash-msg">טוען נתונים...</div>
+  <div class="sp-logo">מחירו<em>סקופ</em></div>
+  <div class="sp-sub">גבעתיים · 3 סניפים</div>
+  <div class="sp-bar"><div class="sp-prog" id="prog"></div></div>
+  <div class="sp-msg" id="splash-msg">טוען...</div>
 </div>
 
 <header>
-  <div class="h-logo">מחירו<em>סקופ</em></div>
-  <div class="h-store"><span class="live"></span><span id="h-updated"></span></div>
-  <div class="h-spacer"></div>
-  <button class="h-btn" onclick="openCart()">🛒 רשימה <span class="cart-count" id="cart-count" style="display:none">0</span></button>
-  <button class="h-btn" onclick="openSettings()">⚙️ <span>הגדרות</span></button>
+  <div class="logo">מחירו<em>סקופ</em></div>
+  <div class="h-sep"></div>
+  <button class="h-pill" onclick="openCart()">
+    🛒 רשימה
+    <span class="badge-count" id="cart-badge" style="display:none">0</span>
+  </button>
+  <button class="h-pill" onclick="openSettings()">⚙️</button>
 </header>
 
-<div class="layout">
-  <aside class="sidebar" id="sidebar"></aside>
-  <main class="content">
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar"></nav>
 
-    <!-- TABS -->
-    <div class="tabs">
-      <button class="tab on" onclick="setTab('browse',this)">🔍 גלישה</button>
-      <button class="tab" onclick="setTab('compare',this)">📊 השוואה</button>
-    </div>
-
-    <!-- STATS -->
-    <div class="stats">
-      <div class="stat s-blue"><div class="stat-n" id="s-total">—</div><div class="stat-l">מוצרים סה"כ</div></div>
-      <div class="stat s-amber"><div class="stat-n" id="s-promos">—</div><div class="stat-l">מבצעים</div></div>
-      <div class="stat s-green"><div class="stat-n" id="s-shared">—</div><div class="stat-l">ניתן להשוואה</div></div>
-      <div class="stat s-purple"><div class="stat-n" id="s-watch">0</div><div class="stat-l">במעקב</div></div>
-    </div>
-
-    <!-- STORE LEGEND -->
-    <div class="store-legend" id="store-legend"></div>
-
-    <!-- CONTROLS -->
-    <div class="controls">
-      <div class="page-title" id="page-title">כל המוצרים</div>
-      <div class="filters" id="filters">
-        <button class="fc on-all" onclick="setFilter('all',this)">הכל</button>
-        <button class="fc" onclick="setFilter('deal',this)">🔥 מבצע</button>
-        <button class="fc" onclick="setFilter('cheap',this)">💰 זול מממוצע</button>
-        <button class="fc" onclick="setFilter('drop',this)">📉 ירד</button>
-        <button class="fc" onclick="setFilter('compare',this)">🔄 ב-3 סניפים</button>
-        <button class="fc" onclick="setFilter('watch',this)">⭐ מעקב</button>
+  <!-- Main -->
+  <div class="main" id="main">
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">כל המוצרים</div>
+      <div class="filter-row">
+        <button class="fchip on" onclick="setFilter('all',this)">הכל</button>
+        <button class="fchip" onclick="setFilter('deal',this)">🔥 מבצע</button>
+        <button class="fchip" onclick="setFilter('cheap',this)">💰 זול</button>
+        <button class="fchip" onclick="setFilter('drop',this)">📉 ירד</button>
+        <button class="fchip" onclick="setFilter('compare',this)">🔄 השוואה</button>
+        <button class="fchip" onclick="setFilter('watch',this)">⭐</button>
       </div>
     </div>
 
-    <div class="search-sort">
-      <div class="search-wrap">
+    <div class="search-row">
+      <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" id="search" placeholder="חיפוש מוצר..." oninput="renderGrid()">
+        <input type="text" id="search" placeholder="חיפוש..." oninput="render()">
       </div>
-      <select class="sort-sel" id="sort-sel" onchange="renderGrid()">
-        <option value="name">מיון: א–ב</option>
-        <option value="price_asc">מחיר עולה</option>
-        <option value="price_desc">מחיר יורד</option>
+      <select class="sort-select" id="sort" onchange="render()">
+        <option value="name">א–ב</option>
+        <option value="price_asc">מחיר ↑</option>
+        <option value="price_desc">מחיר ↓</option>
         <option value="cheap">זול מממוצע</option>
-        <option value="drop">ירידה גדולה</option>
-        <option value="diff">הפרש בין סניפים</option>
+        <option value="diff">הפרש גדול</option>
+        <option value="drop">ירידה</option>
       </select>
-      <div class="view-btns">
-        <button class="vbtn on" onclick="setView('grid',this)" title="גריד">⊞</button>
-        <button class="vbtn" onclick="setView('list',this)" title="רשימה">☰</button>
+      <div class="view-toggle">
+        <button class="view-btn on" id="vbtn-grid" onclick="setView('grid')">⊞</button>
+        <button class="view-btn" id="vbtn-list" onclick="setView('list')">☰</button>
       </div>
     </div>
 
-    <div class="results-meta" id="results-meta"></div>
-    <div id="grid-container"></div>
-    <div class="empty" id="empty" style="display:none">
-      <div class="empty-icon">🔍</div><p>לא נמצאו תוצאות</p>
+    <div class="stats-strip">
+      <div class="stat-item"><div class="stat-n" id="s-total">—</div><div class="stat-l">מוצרים</div></div>
+      <div class="stat-item"><div class="stat-n" id="s-promos">—</div><div class="stat-l">מבצעים</div></div>
+      <div class="stat-item"><div class="stat-n" id="s-compare">—</div><div class="stat-l">להשוואה</div></div>
+      <div class="stat-item"><div class="stat-n" id="s-watch">0</div><div class="stat-l">מעקב</div></div>
     </div>
 
-  </main>
+    <div class="store-tags" id="store-tags"></div>
+    <div class="results-meta" id="results-meta"></div>
+
+    <div id="grid-area"></div>
+    <div class="empty-state" id="empty" style="display:none">
+      <div class="ei">🔍</div><p>לא נמצאו תוצאות</p>
+    </div>
+  </div>
 </div>
 
-<!-- CART PANEL -->
-<div class="panel-overlay" id="cart-overlay" onclick="closeCart()"></div>
-<div class="panel" id="cart-panel">
-  <div class="panel-head">
+<!-- Cart -->
+<div class="drawer-bg" id="cart-bg" onclick="closeCart()"></div>
+<div class="drawer" id="cart-drawer">
+  <div class="drawer-head">
     <h2>🛒 רשימת קניות</h2>
-    <button class="panel-close" onclick="closeCart()">✕</button>
+    <button class="drawer-close" onclick="closeCart()">✕</button>
   </div>
-  <div class="panel-body" id="cart-body"></div>
-  <div class="panel-foot" id="cart-foot"></div>
+  <div class="drawer-body" id="cart-body"></div>
+  <div class="drawer-foot" id="cart-foot"></div>
 </div>
 
-<!-- PRODUCT MODAL -->
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modal-content"></div>
+<!-- Product modal -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content">
+    <div class="modal-drag"></div>
+  </div>
 </div>
 
-<!-- SETTINGS PANEL -->
-<div class="panel-overlay" id="settings-overlay" onclick="closeSettings()"></div>
-<div class="settings-panel" id="settings-panel">
-  <div class="sp-head">
-    <h2>⚙️ הגדרות תצוגה</h2>
-    <button class="panel-close" onclick="closeSettings()">✕</button>
+<!-- Settings -->
+<div class="drawer-bg" id="settings-bg" onclick="closeSettings()"></div>
+<div class="settings-drawer" id="settings-drawer">
+  <div class="drawer-head">
+    <h2>הגדרות</h2>
+    <button class="drawer-close" onclick="closeSettings()">✕</button>
   </div>
-  <div class="sp-body" id="sp-body"></div>
-  <div class="sp-foot">
-    <button class="sp-btn" onclick="applySettings()">החל שינויים</button>
+  <div class="drawer-body" id="settings-body"></div>
+  <div class="drawer-foot">
+    <button onclick="applySettings()" style="width:100%;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:none;background:var(--text);color:#fff;">החל</button>
   </div>
 </div>
 
 <script>
 const DATA_URL = 'https://raw.githubusercontent.com/fguy10-max/shufersal-tracker/main/shufersal_prices.json';
 
-const CAT_META = {
-  dairy:{icon:'🥛',label:'מוצרי חלב'}, meat:{icon:'🍗',label:'בשר ועוף'},
-  fish:{icon:'🐟',label:'דגים'}, produce:{icon:'🥦',label:'ירקות ופירות'},
-  bakery:{icon:'🍞',label:'לחם ומאפים'}, cookies:{icon:'🍪',label:'עוגות ועוגיות'},
-  chocolate:{icon:'🍫',label:'שוקולד'}, candy:{icon:'🍬',label:'סוכריות'},
-  snacks:{icon:'🍿',label:'חטיפים'}, beverages:{icon:'🧃',label:'משקאות'},
-  coffee:{icon:'☕',label:'קפה'}, tea:{icon:'🍵',label:'תה'},
-  oil:{icon:'🫒',label:'שמנים ורטבים'}, grains:{icon:'🌾',label:'דגנים'},
-  breakfast:{icon:'🥣',label:'ארוחת בוקר'}, pantry:{icon:'🥫',label:'שימורים'},
-  frozen:{icon:'❄️',label:'קפואים'}, alcohol:{icon:'🍺',label:'אלכוהול'},
-  hygiene:{icon:'🧴',label:'טיפוח'}, cleaning:{icon:'🧹',label:'ניקיון'},
-  baby:{icon:'👶',label:'תינוקות'}, pets:{icon:'🐾',label:'חיות מחמד'},
-  other:{icon:'📦',label:'אחר'},
+const CAT = {
+  dairy:{i:'🥛',l:'חלב'}, meat:{i:'🍗',l:'בשר'}, fish:{i:'🐟',l:'דגים'},
+  produce:{i:'🥦',l:'ירקות'}, bakery:{i:'🍞',l:'לחם'}, cookies:{i:'🍪',l:'עוגיות'},
+  chocolate:{i:'🍫',l:'שוקולד'}, candy:{i:'🍬',l:'ממתקים'}, snacks:{i:'🍿',l:'חטיפים'},
+  beverages:{i:'🧃',l:'משקאות'}, coffee:{i:'☕',l:'קפה'}, tea:{i:'🍵',l:'תה'},
+  oil:{i:'🫒',l:'שמנים'}, grains:{i:'🌾',l:'דגנים'}, breakfast:{i:'🥣',l:'בוקר'},
+  pantry:{i:'🥫',l:'שימורים'}, frozen:{i:'❄️',l:'קפואים'}, alcohol:{i:'🍺',l:'אלכוהול'},
+  hygiene:{i:'🧴',l:'טיפוח'}, cleaning:{i:'🧹',l:'ניקיון'}, baby:{i:'👶',l:'תינוקות'},
+  pets:{i:'🐾',l:'חיות'}, other:{i:'📦',l:'אחר'},
 };
-
-const STORE_COLORS = {
-  sheli_shabit:'#0a3d6e',
-  express_histadrut:'#198754',
-  citymarket_givataim:'#c2410c',
-};
-
-const DEFAULT_HIDDEN = new Set(['alcohol','baby','pets','other']);
+const SC = { sheli_shabit:'#1d4ed8', express_histadrut:'#15803d', citymarket_givataim:'#b45309' };
+const DEFAULT_HIDDEN = ['alcohol','baby','pets','other'];
 
 let DATA, STORES=[], allProducts=[], catMap={}, compMap={};
-let curCat='all', curFilter='all', curView='grid', curTab='browse';
-let watching = new Set(JSON.parse(localStorage.getItem('mchiro_watch')||'[]'));
-let cart = JSON.parse(localStorage.getItem('mchiro_cart')||'[]');
-let hiddenCats = new Set(JSON.parse(localStorage.getItem('mchiro_hidden')||JSON.stringify([...DEFAULT_HIDDEN])));
+let curCat='all', curFilter='all', curView='grid';
+let watching = new Set(JSON.parse(localStorage.getItem('w')||'[]'));
+let cart = JSON.parse(localStorage.getItem('c')||'[]');
+let hiddenCats = new Set(JSON.parse(localStorage.getItem('h')||JSON.stringify(DEFAULT_HIDDEN)));
 
-function prog(p,msg){document.getElementById('prog').style.width=p+'%';document.getElementById('splash-msg').textContent=msg;}
+const prog = (p,m) => { document.getElementById('prog').style.width=p+'%'; document.getElementById('splash-msg').textContent=m; };
 
-async function boot(){
-  prog(15,'מתחבר לשרת...');
-  try{
-    const r=await fetch(DATA_URL+'?t='+Date.now());
-    if(!r.ok)throw new Error(r.status);
-    prog(55,'מנתח נתונים...');
-    DATA=await r.json();
-  }catch(e){
-    document.getElementById('splash-msg').textContent='❌ שגיאה — '+e.message;
+async function boot() {
+  prog(15,'מתחבר...');
+  try {
+    const r = await fetch(DATA_URL+'?t='+Date.now());
+    if(!r.ok) throw new Error(r.status);
+    prog(55,'מנתח...');
+    DATA = await r.json();
+  } catch(e) {
+    document.getElementById('splash-msg').textContent='❌ '+e.message;
     return;
   }
-  prog(80,'בונה ממשק...');
-  STORES=DATA.stores||[];
-  compMap=DATA.comparison?.barcodes||{};
-
-  // בניית מפה מאוחדת של מוצרים לפי קטגוריה
+  prog(85,'בונה...');
+  STORES = DATA.stores||[];
+  compMap = DATA.comparison?.barcodes||{};
   rebuildProducts();
-  prog(100,'מוכן!');
-  setTimeout(()=>{
-    document.getElementById('splash').classList.add('hide');
-    initUI();
-  },350);
+  prog(100,'');
+  setTimeout(()=>{ document.getElementById('splash').classList.add('done'); init(); }, 300);
 }
 
-function rebuildProducts(){
-  catMap={};
-  allProducts=[];
-  for(const store of STORES){
-    for(const[cat,items] of Object.entries(store.categories||{})){
-      if(hiddenCats.has(cat))continue;
-      if(!catMap[cat])catMap[cat]=[];
-      for(const p of items){
-        p._storeId=store.id;
-        p._storeName=store.short;
-        // הוספת מחירי השוואה
-        if(compMap[p.barcode]){
-          p._prices=compMap[p.barcode].prices;
-        }
-        catMap[cat].push(p);
-        allProducts.push(p);
+function rebuildProducts() {
+  catMap={}; allProducts=[];
+  for(const store of STORES) {
+    for(const [cat,items] of Object.entries(store.categories||{})) {
+      if(hiddenCats.has(cat)) continue;
+      if(!catMap[cat]) catMap[cat]=[];
+      for(const p of items) {
+        const np={...p, _sid:store.id, _sname:store.short};
+        if(compMap[p.barcode]) np._prices=compMap[p.barcode].prices;
+        catMap[cat].push(np);
+        allProducts.push(np);
       }
     }
   }
 }
 
-function initUI(){
-  const d=new Date(DATA.generatedAt);
-  document.getElementById('h-updated').textContent=
-    'עודכן '+d.toLocaleDateString('he-IL')+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-
-  const totalProds=STORES.reduce((s,st)=>s+st.totalProducts,0);
-  const totalPromos=STORES.reduce((s,st)=>s+st.totalWithPromo,0);
-  const shared=Object.values(compMap).filter(d=>Object.keys(d.prices).length>=2).length;
-
-  document.getElementById('s-total').textContent=totalProds.toLocaleString();
-  document.getElementById('s-promos').textContent=totalPromos;
-  document.getElementById('s-shared').textContent=shared.toLocaleString();
-  document.getElementById('s-watch').textContent=watching.size;
-
-  // Store legend
-  const leg=document.getElementById('store-legend');
-  leg.innerHTML=STORES.map(s=>`
-    <div class="store-pill">
-      <div class="store-dot" style="background:${STORE_COLORS[s.id]||'#666'}"></div>
-      ${s.short} <span style="color:var(--ink3);font-weight:400">${s.totalProducts.toLocaleString()}</span>
+function init() {
+  const d = new Date(DATA.generatedAt);
+  // stats
+  const total = STORES.reduce((s,st)=>s+st.totalProducts,0);
+  const promos = STORES.reduce((s,st)=>s+st.totalWithPromo,0);
+  const shared = Object.values(compMap).filter(d=>Object.keys(d.prices).length>=2).length;
+  document.getElementById('s-total').textContent = total.toLocaleString();
+  document.getElementById('s-promos').textContent = promos;
+  document.getElementById('s-compare').textContent = shared.toLocaleString();
+  document.getElementById('s-watch').textContent = watching.size;
+  // store tags
+  document.getElementById('store-tags').innerHTML = STORES.map(s=>`
+    <div class="store-tag">
+      <div class="store-dot" style="background:${SC[s.id]||'#999'}"></div>
+      <span>${s.short}</span>
+      <span style="color:var(--text3)">${s.totalProducts.toLocaleString()}</span>
     </div>`).join('');
-
   buildSidebar();
-  renderGrid();
-  updateCartBadge();
+  render();
+  updateBadge();
 }
 
-function buildSidebar(){
-  const el=document.getElementById('sidebar');
-  let h='<div class="sb-sec">קטגוריות</div>';
-  h+=mkCat('all','🏠','כל המוצרים',allProducts.length,true);
-  const sorted=Object.entries(catMap).sort((a,b)=>b[1].length-a[1].length);
-  for(const[cat,items]of sorted){
-    const m=CAT_META[cat]||{icon:'📦',label:cat};
-    const deals=items.filter(p=>p.promo).length;
-    const cheap=items.filter(p=>p.vsAvgPct!==null&&p.vsAvgPct<-5).length;
-    h+=mkCat(cat,m.icon,m.label,items.length,false,deals,cheap);
+function buildSidebar() {
+  const el = document.getElementById('sidebar');
+  let h = '<div class="sb-label">קטגוריות</div>';
+  h += mkCatItem('all','🏠','הכל',allProducts.length,true);
+  for(const [cat,items] of Object.entries(catMap).sort((a,b)=>b[1].length-a[1].length)) {
+    const m = CAT[cat]||{i:'📦',l:cat};
+    const deals = items.filter(p=>p.promo).length;
+    const cheap = items.filter(p=>p.vsAvgPct<-5).length;
+    h += mkCatItem(cat, m.i, m.l, items.length, false, deals, cheap);
   }
-  el.innerHTML=h;
+  el.innerHTML = h;
 }
 
-function mkCat(id,icon,label,count,active,deals=0,cheap=0){
-  const badge=deals>0?`<span class="cat-badge pill-deal">${deals}</span>`:
-               cheap>0?`<span class="cat-badge pill-cheap">${cheap}</span>`:
-               `<span class="cat-badge pill-n">${count}</span>`;
-  return `<div class="cat${active?' on':''}" onclick="selectCat('${id}',this)">
+function mkCatItem(id,icon,label,count,active,deals=0,cheap=0) {
+  const badge = deals>0 ? `<span class="cat-badge cb-deal">${deals}</span>` :
+                cheap>0 ? `<span class="cat-badge cb-cheap">${cheap}</span>` :
+                          `<span class="cat-count">${count}</span>`;
+  return `<div class="cat-item${active?' active':''}" onclick="selectCat('${id}',this)">
     <span class="cat-icon">${icon}</span>
-    <span class="cat-name">${label}</span>${badge}
+    <span class="cat-label">${label}</span>${badge}
   </div>`;
 }
 
-function selectCat(id,el){
+function selectCat(id,el) {
   curCat=id;
-  document.querySelectorAll('.cat').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  const m=id==='all'?{label:'כל המוצרים'}:(CAT_META[id]||{label:id});
-  document.getElementById('page-title').textContent=(id==='all'?'🏠 ':((CAT_META[id]?.icon||'')+' '))+m.label;
+  document.querySelectorAll('.cat-item').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const m = id==='all' ? {i:'',l:'כל המוצרים'} : (CAT[id]||{i:'',l:id});
+  document.getElementById('page-title').textContent = m.l;
   document.getElementById('search').value='';
-  renderGrid();
+  render();
 }
 
-function setTab(t,btn){
-  curTab=t;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderGrid();
-}
-
-function setFilter(f,btn){
+function setFilter(f,btn) {
   curFilter=f;
-  document.querySelectorAll('.fc').forEach(c=>{c.className='fc';});
-  btn.classList.add('on-'+f);
-  renderGrid();
+  document.querySelectorAll('.fchip').forEach(c=>{ c.className='fchip'; });
+  btn.classList.add(f==='all'?'on':'on-'+f);
+  render();
 }
 
-function setView(v,btn){
+function setView(v) {
   curView=v;
-  document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderGrid();
+  ['grid','list'].forEach(x=>{ document.getElementById('vbtn-'+x).classList.toggle('on',x===v); });
+  render();
 }
 
-function getProducts(){
-  let list=curCat==='all'?[...allProducts]:[...(catMap[curCat]||[])];
-  const q=document.getElementById('search').value.trim().toLowerCase();
-  if(q)list=list.filter(p=>p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q)||(p.barcode||'').includes(q));
-  if(curFilter==='deal')list=list.filter(p=>p.promo);
-  if(curFilter==='cheap')list=list.filter(p=>p.vsAvgPct!==null&&p.vsAvgPct<-5);
-  if(curFilter==='drop')list=list.filter(p=>p.changePct!==null&&p.changePct<-1);
-  if(curFilter==='compare')list=list.filter(p=>p._prices&&Object.keys(p._prices).length>=2);
-  if(curFilter==='watch')list=list.filter(p=>watching.has(p.barcode));
-
-  const sort=document.getElementById('sort-sel').value;
-  if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name,'he'));
-  else if(sort==='price_asc')list.sort((a,b)=>a.price-b.price);
-  else if(sort==='price_desc')list.sort((a,b)=>b.price-a.price);
-  else if(sort==='cheap')list.sort((a,b)=>(a.vsAvgPct??999)-(b.vsAvgPct??999));
-  else if(sort==='drop')list.sort((a,b)=>(a.changePct??0)-(b.changePct??0));
-  else if(sort==='diff')list.sort((a,b)=>{
+function getProducts() {
+  let list = curCat==='all' ? [...allProducts] : [...(catMap[curCat]||[])];
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q));
+  if(curFilter==='deal') list=list.filter(p=>p.promo);
+  if(curFilter==='cheap') list=list.filter(p=>p.vsAvgPct<-5);
+  if(curFilter==='drop') list=list.filter(p=>p.changePct<-1);
+  if(curFilter==='compare') list=list.filter(p=>p._prices&&Object.keys(p._prices).length>=2);
+  if(curFilter==='watch') list=list.filter(p=>watching.has(p.barcode));
+  const sort = document.getElementById('sort').value;
+  if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name,'he'));
+  else if(sort==='price_asc') list.sort((a,b)=>a.price-b.price);
+  else if(sort==='price_desc') list.sort((a,b)=>b.price-a.price);
+  else if(sort==='cheap') list.sort((a,b)=>(a.vsAvgPct??999)-(b.vsAvgPct??999));
+  else if(sort==='drop') list.sort((a,b)=>(a.changePct??0)-(b.changePct??0));
+  else if(sort==='diff') list.sort((a,b)=>{
     const da=a._prices?Math.max(...Object.values(a._prices))-Math.min(...Object.values(a._prices)):0;
     const db=b._prices?Math.max(...Object.values(b._prices))-Math.min(...Object.values(b._prices)):0;
     return db-da;
@@ -560,397 +519,311 @@ function getProducts(){
   return list;
 }
 
-function renderGrid(){
-  const products=getProducts();
-  const container=document.getElementById('grid-container');
-  const empty=document.getElementById('empty');
-  document.getElementById('results-meta').textContent=
-    products.length?`${Math.min(products.length,300).toLocaleString()} מתוך ${products.length.toLocaleString()} תוצאות`:'';
-
-  if(!products.length){container.innerHTML='';empty.style.display='block';return;}
+function render() {
+  const products = getProducts();
+  const area = document.getElementById('grid-area');
+  const empty = document.getElementById('empty');
+  document.getElementById('results-meta').textContent =
+    products.length ? `${Math.min(products.length,300).toLocaleString()} מתוך ${products.length.toLocaleString()}` : '';
+  if(!products.length) { area.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
-
-  const isList=curView==='list';
-  container.className=isList?'list-view':'grid';
-  container.innerHTML=products.slice(0,300).map((p,i)=>mkCard(p,i,isList)).join('');
+  const isList = curView==='list';
+  area.className = isList ? 'list-view' : 'grid';
+  area.innerHTML = products.slice(0,300).map((p,i)=>mkCard(p,i,isList)).join('');
 }
 
-function mkCard(p,i,isList){
-  const hasDeal=!!p.promo;
-  const hasDrop=p.changePct!==null&&p.changePct<-1;
-  const isCheap=p.vsAvgPct!==null&&p.vsAvgPct<-5;
+function mkCard(p,i,isList) {
+  const hasDeal=!!p.promo, hasDrop=p.changePct<-1, isCheap=p.vsAvgPct<-5;
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
-  const isWatching=watching.has(p.barcode);
-  const inCart=cart.some(c=>c.barcode===p.barcode);
-  const delay=`animation-delay:${Math.min(i,20)*0.025}s`;
+  const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
+  const delay=`animation-delay:${Math.min(i,15)*0.03}s`;
+  const col=SC[p._sid]||'#999';
 
-  let badges='';
-  if(hasDrop)badges+='<span class="badge b-drop">📉 ירד</span>';
-  if(hasDeal)badges+='<span class="badge b-deal">🔥 מבצע</span>';
-  if(isCheap)badges+='<span class="badge b-cheap">💰 זול</span>';
-  if(hasCompare&&!hasDrop&&!hasDeal&&!isCheap)badges+='<span class="badge b-compare">🔄 השוואה</span>';
+  const tags = [
+    hasDrop ? '<span class="tag tag-drop">📉 ירד</span>' : '',
+    hasDeal ? '<span class="tag tag-deal">🔥 מבצע</span>' : '',
+    isCheap ? '<span class="tag tag-cheap">💰 זול</span>' : '',
+  ].filter(Boolean).join('');
 
-  // בלוק מחיר ל-100
-  let p100='';
-  if(p.pricePer100){
-    const uLabel=p.unitType==='ml'?'מ"ל':'גרם';
-    const vs=p.vsAvgPct;
-    p100=`<div class="p100-row">
-      <div><div class="p100-val">₪${p.pricePer100} ל-100 ${uLabel}</div>
-      ${p.nSimilar?`<div class="p100-lbl">${p.nSimilar} מוצרים דומים</div>`:''}
+  const p100 = p.pricePer100 ? `
+    <div class="norm-price">
+      <div>
+        <div class="norm-val">₪${p.pricePer100} <span class="norm-lbl">ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}</span></div>
       </div>
-      ${vs!==null&&vs!==undefined?`<span class="vs-chip ${vs<0?'vs-cheap':'vs-exp'}">${vs<0?'↓':'↑'}${Math.abs(vs)}%</span>`:''}
-    </div>`;
-  }
+      ${p.vsAvgPct!=null ? `<span class="norm-vs ${p.vsAvgPct<0?'vs-low':'vs-high'}">${p.vsAvgPct<0?'↓':'↑'}${Math.abs(p.vsAvgPct)}%</span>` : ''}
+    </div>` : '';
 
-  // השוואת סניפים
-  let storeCompare='';
-  if(hasCompare){
-    const prices=p._prices;
-    const vals=Object.values(prices);
-    const minP=Math.min(...vals);
-    const maxP=Math.max(...vals);
-    storeCompare=`<div class="store-compare">
-      ${STORES.filter(s=>prices[s.id]!==undefined).map(s=>{
-        const sp=prices[s.id];
-        const isBest=sp===minP;
-        const isWorst=sp===maxP&&minP!==maxP;
-        return `<div class="store-row">
-          <div class="store-row-dot" style="background:${STORE_COLORS[s.id]}"></div>
-          <div class="store-row-name">${s.short}</div>
-          <div class="store-row-price ${isBest?'best':isWorst?'worst':''}">₪${sp}</div>
-          ${isBest&&minP!==maxP?`<div class="store-row-diff">↓₪${(maxP-sp).toFixed(1)}</div>`:''}
+  // השוואת סניפים — כולל סניפים שאין בהם
+  const storeComp = hasCompare ? `
+    <div class="store-compare">
+      ${STORES.map(s=>{
+        const sp = p._prices[s.id];
+        const vals = Object.values(p._prices);
+        const minP = Math.min(...vals), maxP = Math.max(...vals);
+        const isBest = sp!==undefined && sp===minP;
+        const isWorst = sp!==undefined && sp===maxP && minP!==maxP;
+        return `<div class="sc-row">
+          <div class="sc-dot" style="background:${SC[s.id]}"></div>
+          <div class="sc-name">${s.short}</div>
+          ${sp!==undefined
+            ? `<div class="sc-price ${isBest?'sc-best':isWorst?'sc-worst':''}">₪${sp}</div>
+               ${isBest&&minP!==maxP?`<div class="sc-diff">−₪${(maxP-sp).toFixed(1)}</div>`:''}`
+            : `<div class="sc-price sc-na">—</div>`}
         </div>`;
       }).join('')}
+    </div>` : '';
+
+  const footer = `
+    <div class="card-footer">
+      <span class="card-date">${p.updatedAt?.substring(0,10)||''}</span>
+      <div class="card-actions">
+        <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
+        <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}${inC?' ':' '}רשימה</button>
+      </div>
     </div>`;
-  }
 
-  const dropBlock=hasDrop?`<div class="drop-row">📉 ירד ${Math.abs(p.changePct)}%
-    <span class="drop-was">מ-₪${p.prevPrice} לפני ${p.daysAgo} ימים</span>
-  </div>`:'';
-
-  const promoBlock=hasDeal?`<div class="promo-tag">🏷️ ${p.promo}</div>`:'';
-  const storeColor=STORE_COLORS[p._storeId]||'#666';
-  const upd=p.updatedAt?p.updatedAt.substring(0,10):'';
-
-  if(isList){
-    return `<div class="card list-card" style="${delay}" onclick="openProduct('${p.barcode}','${p._storeId}')">
+  if(isList) return `
+    <div class="list-card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')">
       <div>
-        <div class="card-badges">${badges}</div>
+        <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col}">${p._sname}</span></div>
         <div class="card-name">${p.name}</div>
-        <div class="card-brand" style="color:${storeColor}">${p._storeName} · ${p.brand||''}</div>
-        ${storeCompare||p100}
+        ${tags ? `<div class="card-tags" style="margin-top:4px">${tags}</div>` : ''}
+        ${storeComp}
       </div>
       <div style="text-align:left;flex-shrink:0">
-        <div class="price-big">₪${p.price.toFixed(2)}</div>
+        <div class="price-main">₪${p.price.toFixed(2)}</div>
         <div class="price-unit">${p.unit||''}</div>
         <div class="card-actions" style="margin-top:6px">
-          <button class="act-btn ${isWatching?'watch-on':''}" onclick="event.stopPropagation();toggleWatch('${p.barcode}',this)">${isWatching?'⭐':'☆'}</button>
-          <button class="act-btn ${inCart?'cart-on':''}" onclick="event.stopPropagation();toggleCart('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._storeId}',this)">${inCart?'✓':'+'}</button>
+          <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
+          <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
         </div>
       </div>
     </div>`;
-  }
 
-  return `<div class="card" style="${delay}" onclick="openProduct('${p.barcode}','${p._storeId}')">
-    <div class="card-badges">${badges}</div>
-    <div class="card-name">${p.name}</div>
-    <div class="card-brand" style="color:${storeColor}">${p._storeName} · ${p.brand||''}</div>
-    <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:3px">
-      <div class="price-big">₪${p.price.toFixed(2)}</div>
-      ${p.prevPrice?`<div style="font-size:0.85rem;color:var(--ink3);text-decoration:line-through;padding-bottom:4px">₪${p.prevPrice}</div>`:''}
-    </div>
-    <div class="price-unit">${p.unit||''}</div>
-    ${p100}
-    ${hasCompare?storeCompare:''}
-    ${dropBlock}${promoBlock}
-    <div class="card-footer">
-      <span class="updated">${upd}</span>
-      <div class="card-actions">
-        <button class="act-btn ${isWatching?'watch-on':''}" onclick="event.stopPropagation();toggleWatch('${p.barcode}',this)">${isWatching?'⭐':'☆'}</button>
-        <button class="act-btn ${inCart?'cart-on':''}" onclick="event.stopPropagation();toggleCart('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._storeId}',this)">${inCart?'✓ ברשימה':'+ רשימה'}</button>
+  return `
+    <div class="card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')">
+      <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col};font-size:0.7rem;font-weight:600">${p._sname}</span></div>
+      <div class="card-name">${p.name}</div>
+      <div class="card-brand">${p.brand||''}</div>
+      <div class="card-price">
+        <div class="price-main">₪${p.price.toFixed(2)}</div>
+        ${p.prevPrice?`<div class="price-prev">₪${p.prevPrice}</div>`:''}
+        <div class="price-unit">${p.unit||''}</div>
       </div>
-    </div>
-  </div>`;
-}
-
-// ── Watch ──
-function toggleWatch(barcode,btn){
-  if(watching.has(barcode)){watching.delete(barcode);btn.textContent='☆';btn.classList.remove('watch-on');}
-  else{watching.add(barcode);btn.textContent='⭐';btn.classList.add('watch-on');}
-  localStorage.setItem('mchiro_watch',JSON.stringify([...watching]));
-  document.getElementById('s-watch').textContent=watching.size;
-}
-
-// ── Cart ──
-function toggleCart(barcode,name,price,storeId,btn){
-  const idx=cart.findIndex(c=>c.barcode===barcode);
-  if(idx>=0){cart.splice(idx,1);btn.textContent='+ רשימה';btn.classList.remove('cart-on');}
-  else{cart.push({barcode,name,price,storeId,qty:1});btn.textContent='✓ ברשימה';btn.classList.add('cart-on');}
-  saveCart();
-}
-
-function saveCart(){
-  localStorage.setItem('mchiro_cart',JSON.stringify(cart));
-  updateCartBadge();
-}
-
-function updateCartBadge(){
-  const cnt=document.getElementById('cart-count');
-  if(cart.length>0){cnt.style.display='inline';cnt.textContent=cart.length;}
-  else{cnt.style.display='none';}
-}
-
-function openCart(){
-  renderCart();
-  document.getElementById('cart-overlay').classList.add('open');
-  document.getElementById('cart-panel').classList.add('open');
-}
-
-function closeCart(){
-  document.getElementById('cart-overlay').classList.remove('open');
-  document.getElementById('cart-panel').classList.remove('open');
-}
-
-function renderCart(){
-  const body=document.getElementById('cart-body');
-  const foot=document.getElementById('cart-foot');
-
-  if(!cart.length){
-    body.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><p>הרשימה ריקה</p></div>';
-    foot.innerHTML='';
-    return;
-  }
-
-  body.innerHTML=cart.map((item,idx)=>`
-    <div class="cart-item">
-      <div style="flex:1">
-        <div class="cart-item-name">${item.name}</div>
-        <div style="font-size:0.72rem;color:var(--ink3)">${STORES.find(s=>s.id===item.storeId)?.short||''}</div>
-      </div>
-      <div class="cart-qty">
-        <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
-        <span class="qty-num">${item.qty}</span>
-        <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
-      </div>
-      <div class="cart-item-price">₪${(item.price*item.qty).toFixed(2)}</div>
-      <button class="cart-item-del" onclick="removeFromCart(${idx})">✕</button>
-    </div>`).join('');
-
-  // השוואת סניפים לסל
-  const storeTotals={};
-  const storeMissing={};
-  for(const store of STORES){storeTotals[store.id]=0;storeMissing[store.id]=0;}
-
-  for(const item of cart){
-    const prices=compMap[item.barcode]?.prices||{[item.storeId]:item.price};
-    for(const store of STORES){
-      if(prices[store.id]!==undefined){
-        storeTotals[store.id]+=prices[store.id]*(item.qty||1);
-      } else {
-        storeMissing[store.id]++;
-        storeTotals[store.id]+=item.price*(item.qty||1); // fallback
-      }
-    }
-  }
-
-  const totalItems=cart.reduce((s,c)=>s+(c.qty||1),0);
-  const myTotal=cart.reduce((s,c)=>s+c.price*(c.qty||1),0);
-  const bestStore=STORES.reduce((best,s)=>storeTotals[s.id]<storeTotals[best.id]?s:best,STORES[0]);
-
-  foot.innerHTML=`
-    <div class="compare-summary">
-      <h3>השוואת עלות הסל בסניפים</h3>
-      ${STORES.map(s=>`
-        <div class="compare-store-row">
-          <div class="compare-store-name">
-            <div class="store-dot" style="background:${STORE_COLORS[s.id]};width:8px;height:8px;border-radius:50%"></div>
-            ${s.short}
-            ${storeMissing[s.id]>0?`<span style="font-size:0.68rem;color:var(--ink3);font-weight:400">(${storeMissing[s.id]} חסרים)</span>`:''}
-          </div>
-          <div class="compare-store-total ${s.id===bestStore.id?'best':''}">₪${storeTotals[s.id].toFixed(2)}</div>
-        </div>`).join('')}
-      <div class="compare-winner">
-        🏆 הכי זול: <strong>${bestStore.short}</strong>
-        — חסכון של ₪${(Math.max(...Object.values(storeTotals))-Math.min(...Object.values(storeTotals))).toFixed(2)}
-      </div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:0.82rem;color:var(--ink2)">${totalItems} פריטים · ₪${myTotal.toFixed(2)}</div>
-      <button onclick="cart=[];saveCart();renderCart();renderGrid()" style="font-size:0.78rem;color:var(--red);background:none;border:none;cursor:pointer">נקה רשימה</button>
+      ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+      ${p100}
+      ${storeComp}
+      ${hasDeal?`<div class="tag tag-deal" style="margin-bottom:8px;display:inline-block">🏷️ ${p.promo}</div>`:''}
+      ${footer}
     </div>`;
 }
 
-function changeQty(idx,delta){
-  cart[idx].qty=Math.max(1,(cart[idx].qty||1)+delta);
-  saveCart();renderCart();
+// Watch & Cart
+function tw(bc,btn) {
+  if(watching.has(bc)){watching.delete(bc);btn.textContent='☆';btn.classList.remove('on-watch');}
+  else{watching.add(bc);btn.textContent='⭐';btn.classList.add('on-watch');}
+  localStorage.setItem('w',JSON.stringify([...watching]));
+  document.getElementById('s-watch').textContent=watching.size;
 }
 
-function removeFromCart(idx){
-  cart.splice(idx,1);
-  saveCart();renderCart();renderGrid();
+function tc(bc,name,price,sid,btn) {
+  const idx=cart.findIndex(c=>c.barcode===bc);
+  if(idx>=0){cart.splice(idx,1);btn.textContent='+ רשימה';btn.classList.remove('on-cart');}
+  else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓ רשימה';btn.classList.add('on-cart');}
+  saveCart();
 }
 
-// ── Product Modal ──
-function openProduct(barcode,storeId){
-  const overlay=document.getElementById('modal-overlay');
-  const content=document.getElementById('modal-content');
+function saveCart(){localStorage.setItem('c',JSON.stringify(cart));updateBadge();}
+function updateBadge(){const b=document.getElementById('cart-badge');b.style.display=cart.length?'inline':'none';b.textContent=cart.length;}
 
-  // מציאת המוצר בכל הסניפים
-  const storeProducts={};
-  for(const store of STORES){
-    for(const items of Object.values(store.categories||{})){
-      const found=items.find(p=>p.barcode===barcode);
-      if(found)storeProducts[store.id]={...found,storeName:store.short};
+// Cart drawer
+function openCart(){renderCart();document.getElementById('cart-bg').classList.add('open');document.getElementById('cart-drawer').classList.add('open');}
+function closeCart(){document.getElementById('cart-bg').classList.remove('open');document.getElementById('cart-drawer').classList.remove('open');}
+
+function renderCart() {
+  const body=document.getElementById('cart-body'), foot=document.getElementById('cart-foot');
+  if(!cart.length){body.innerHTML='<div class="empty-state"><div class="ei">🛒</div><p>הרשימה ריקה</p></div>';foot.innerHTML='';return;}
+
+  body.innerHTML=cart.map((item,idx)=>`
+    <div class="cart-row">
+      <div class="cart-info">
+        <div class="cart-name">${item.name}</div>
+        <div class="cart-store">${STORES.find(s=>s.id===item.storeId)?.short||''}</div>
+        <div class="cart-qty-ctrl">
+          <button class="qty-btn" onclick="chQty(${idx},-1)">−</button>
+          <span class="qty-num">${item.qty}</span>
+          <button class="qty-btn" onclick="chQty(${idx},1)">+</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="cart-price">₪${(item.price*item.qty).toFixed(2)}</div>
+        <button class="cart-del" onclick="rmCart(${idx})">✕</button>
+      </div>
+    </div>`).join('');
+
+  // השוואת עלות הסל — ללא fallback
+  const totalQty=cart.reduce((s,c)=>s+(c.qty||1),0);
+  const storeTotals={}, storeFound={}, storeMissing={};
+  for(const s of STORES){storeTotals[s.id]=0;storeFound[s.id]=0;storeMissing[s.id]=0;}
+  for(const item of cart) {
+    const prices=compMap[item.barcode]?.prices||{[item.storeId]:item.price};
+    for(const s of STORES) {
+      if(prices[s.id]!==undefined){storeTotals[s.id]+=prices[s.id]*(item.qty||1);storeFound[s.id]+=(item.qty||1);}
+      else storeMissing[s.id]+=(item.qty||1);
     }
   }
+  const myTotal=cart.reduce((s,c)=>s+c.price*(c.qty||1),0);
+  const validStores=STORES.filter(s=>storeFound[s.id]>=totalQty/2);
+  const bestStore=validStores.length?validStores.reduce((b,s)=>storeTotals[s.id]<storeTotals[b.id]?s:b,validStores[0]):null;
 
-  const mainP=storeProducts[storeId]||Object.values(storeProducts)[0];
-  if(!mainP)return;
-
-  const prices=compMap[barcode]?.prices||{[storeId]:mainP.price};
-  const vals=Object.values(prices);
-  const minP=Math.min(...vals);
-  const maxP=Math.max(...vals);
-
-  // טבלת השוואה
-  const compareRows=STORES.filter(s=>prices[s.id]!==undefined).map(s=>{
-    const sp=prices[s.id];
-    const isBest=sp===minP;
-    return `<tr class="${isBest?'best-row':''}">
-      <td><div class="store-tag"><div style="width:8px;height:8px;border-radius:50%;background:${STORE_COLORS[s.id]}"></div>${s.short}</div></td>
-      <td style="font-weight:${isBest?'900':'600'};color:${isBest?'var(--green2)':'var(--ink)'}">₪${sp.toFixed(2)}</td>
-      <td style="color:var(--ink3)">${isBest?'✓ הכי זול':sp===maxP&&minP!==maxP?`+₪${(sp-minP).toFixed(1)}`:'—'}</td>
-    </tr>`;
-  }).join('');
-
-  // היסטוריה פשוטה (אם יש)
-  let historyBlock='';
-  const hist=mainP.prevPrice?[
-    {date:mainP.updatedAt?.substring(0,10)||'היום',price:mainP.price},
-    {date:'קודם',price:mainP.prevPrice},
-  ]:[];
-
-  const isW=watching.has(barcode);
-  const inC=cart.some(c=>c.barcode===barcode);
-
-  content.innerHTML=`
-    <div class="modal-head">
-      <div class="modal-title">${mainP.name}</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+  foot.innerHTML=`
+    <div class="compare-box">
+      <h3>עלות הסל בסניפים</h3>
+      ${STORES.map(s=>{
+        const found=storeFound[s.id], missing=storeMissing[s.id];
+        const isBest=bestStore&&s.id===bestStore.id;
+        return `<div class="compare-row">
+          <div class="compare-left">
+            <div class="store-dot" style="background:${SC[s.id]}"></div>
+            <div>
+              <div class="compare-name">${s.short}</div>
+              <div class="compare-items ${missing>0?'warn':''}">${found}/${totalQty} פריטים${missing>0?` · ${missing} חסרים`:''}</div>
+            </div>
+          </div>
+          <div class="compare-price ${isBest?'best':''}">₪${storeTotals[s.id].toFixed(2)}</div>
+        </div>`;
+      }).join('')}
+      ${bestStore?`<div class="winner-row">🏆 הכי זול: ${bestStore.short}
+        ${validStores.length>1?' · חסכון ₪'+(Math.max(...validStores.map(s=>storeTotals[s.id]))-storeTotals[bestStore.id]).toFixed(2):''}
+      </div>`:''}
     </div>
-    <div style="font-size:0.8rem;color:var(--ink3);margin-bottom:16px">${mainP.brand||''} · ${mainP.unit||''}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;color:var(--text2)">
+      <span>${totalQty} פריטים · ₪${myTotal.toFixed(2)}</span>
+      <button onclick="cart=[];saveCart();renderCart();render()" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:0.78rem">נקה</button>
+    </div>`;
+}
+
+function chQty(idx,d){cart[idx].qty=Math.max(1,(cart[idx].qty||1)+d);saveCart();renderCart();}
+function rmCart(idx){cart.splice(idx,1);saveCart();renderCart();render();}
+
+// Product modal
+function openProduct(bc,sid) {
+  const bg=document.getElementById('modal-bg'), mc=document.getElementById('modal-content');
+  // מוצא את המוצר
+  let mainP=null;
+  for(const store of STORES) for(const items of Object.values(store.categories||{})) {
+    const f=items.find(p=>p.barcode===bc);
+    if(f&&store.id===sid){mainP={...f,_sname:store.short,_sid:sid};break;}
+    if(f&&!mainP)mainP={...f,_sname:store.short,_sid:store.id};
+  }
+  if(!mainP)return;
+  const prices=compMap[bc]?.prices||{[sid]:mainP.price};
+  const vals=Object.values(prices), minP=Math.min(...vals), maxP=Math.max(...vals);
+  const isW=watching.has(bc), inC=cart.some(c=>c.barcode===bc);
+
+  mc.innerHTML=`
+    <div class="modal-drag"></div>
+    <div class="modal-title">${mainP.name}</div>
+    <div class="modal-brand">${mainP.brand||''} · ${mainP.unit||''}</div>
 
     ${Object.keys(prices).length>=2?`
-    <div class="modal-section">
-      <h3>השוואת סניפים</h3>
-      <table class="compare-table">
+    <div class="modal-sec">
+      <div class="modal-sec-label">השוואת סניפים</div>
+      <table class="compare-tbl">
         <thead><tr><th>סניף</th><th>מחיר</th><th></th></tr></thead>
-        <tbody>${compareRows}</tbody>
+        <tbody>
+          ${STORES.map(s=>{
+            const sp=prices[s.id];
+            const isBest=sp!==undefined&&sp===minP;
+            return `<tr${isBest?' class="best"':''}>
+              <td><div class="tbl-store"><div class="store-dot" style="background:${SC[s.id]}"></div>${s.short}</div></td>
+              <td class="tbl-price ${isBest?'tbl-best':''}">${sp!==undefined?'₪'+sp:'—'}</td>
+              <td style="font-size:0.72rem;color:var(--text3)">${sp===undefined?'לא נמצא':isBest&&minP!==maxP?'✓ הכי זול':sp===maxP&&minP!==maxP?'+₪'+(sp-minP).toFixed(1):'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
       </table>
     </div>`:''}
 
     ${mainP.pricePer100?`
-    <div class="modal-section">
-      <h3>מחיר ל-100 ${mainP.unitType==='ml'?'מ"ל':'גרם'}</h3>
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="font-family:'Noto Serif Hebrew',serif;font-size:1.8rem;font-weight:900">₪${mainP.pricePer100}</div>
-        ${mainP.vsAvgPct!==null?`<div>
-          <div class="vs-chip ${mainP.vsAvgPct<0?'vs-cheap':'vs-exp'}" style="font-size:0.8rem">
-            ${mainP.vsAvgPct<0?'↓':'↑'} ${Math.abs(mainP.vsAvgPct)}% מממוצע
-          </div>
-          ${mainP.nSimilar?`<div style="font-size:0.7rem;color:var(--ink3);margin-top:3px">ממוצע: ₪${mainP.avgSimilarPer100} · ${mainP.nSimilar} מוצרים</div>`:''}
-        </div>`:''}
+    <div class="modal-sec">
+      <div class="modal-sec-label">מחיר ל-100 ${mainP.unitType==='ml'?'מ"ל':'גרם'}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:1.5rem;font-weight:700">₪${mainP.pricePer100}</span>
+        ${mainP.vsAvgPct!=null?`<span class="norm-vs ${mainP.vsAvgPct<0?'vs-low':'vs-high'}">${mainP.vsAvgPct<0?'↓':'↑'}${Math.abs(mainP.vsAvgPct)}% מממוצע</span>`:''}
+        ${mainP.nSimilar?`<span style="font-size:0.72rem;color:var(--text3)">${mainP.nSimilar} מוצרים דומים</span>`:''}
       </div>
     </div>`:''}
 
     ${mainP.prevPrice?`
-    <div class="modal-section">
-      <h3>שינוי מחיר</h3>
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="font-family:'Noto Serif Hebrew',serif;font-size:1.5rem;font-weight:900;color:var(--blue)">₪${mainP.price}</div>
-        <div style="color:var(--ink3);text-decoration:line-through">₪${mainP.prevPrice}</div>
-        <div class="badge b-drop">ירד ${Math.abs(mainP.changePct)}% לפני ${mainP.daysAgo} ימים</div>
+    <div class="modal-sec">
+      <div class="modal-sec-label">שינוי מחיר</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:1.3rem;font-weight:700;color:var(--blue)">₪${mainP.price}</span>
+        <span style="text-decoration:line-through;color:var(--text3)">₪${mainP.prevPrice}</span>
+        <span class="tag tag-drop">ירד ${Math.abs(mainP.changePct)}% לפני ${mainP.daysAgo} ימים</span>
       </div>
     </div>`:''}
 
-    ${mainP.promo?`<div class="promo-tag" style="margin-bottom:16px">🏷️ ${mainP.promo}</div>`:''}
+    ${mainP.promo?`<div class="tag tag-deal" style="margin-bottom:12px;display:inline-block">🏷️ ${mainP.promo}</div>`:''}
 
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button onclick="toggleWatchModal('${barcode}')" id="modal-watch-btn"
-        style="flex:1;padding:11px;border-radius:var(--r);font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:${isW?'var(--purple-bg)':'var(--white)'};color:${isW?'var(--purple)':'var(--ink2)'}">
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="m-watch" onclick="twModal('${bc}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${isW?'#7c3aed':' var(--border)'};background:${isW?'#f5f3ff':'var(--bg)'};color:${isW?'#7c3aed':'var(--text2)'}">
         ${isW?'⭐ עוקב':'☆ עקוב'}
       </button>
-      <button onclick="toggleCartModal('${barcode}','${mainP.name.replace(/'/g,"\\'")}',${mainP.price},'${storeId}')" id="modal-cart-btn"
-        style="flex:1;padding:11px;border-radius:var(--r);font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:${inC?'var(--green-bg)':'var(--white)'};color:${inC?'var(--green2)':'var(--ink2)'}">
-        ${inC?'✓ ברשימה':'+ הוסף לרשימה'}
+      <button id="m-cart" onclick="tcModal('${bc}','${mainP.name.replace(/'/g,"\\'")}',${mainP.price},'${sid}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${inC?'var(--green)':'var(--border)'};background:${inC?'var(--green-light)':'var(--bg)'};color:${inC?'var(--green)':'var(--text2)'}">
+        ${inC?'✓ ברשימה':'+ הוסף'}
       </button>
     </div>`;
-
-  overlay.classList.add('open');
+  bg.classList.add('open');
 }
 
-function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
-
-function toggleWatchModal(barcode){
-  const isW=watching.has(barcode);
-  if(isW)watching.delete(barcode);else watching.add(barcode);
-  localStorage.setItem('mchiro_watch',JSON.stringify([...watching]));
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+function twModal(bc){
+  if(watching.has(bc))watching.delete(bc);else watching.add(bc);
+  localStorage.setItem('w',JSON.stringify([...watching]));
   document.getElementById('s-watch').textContent=watching.size;
-  const btn=document.getElementById('modal-watch-btn');
-  if(watching.has(barcode)){btn.textContent='⭐ עוקב';btn.style.background='var(--purple-bg)';btn.style.color='var(--purple)';}
-  else{btn.textContent='☆ עקוב';btn.style.background='var(--white)';btn.style.color='var(--ink2)';}
+  const btn=document.getElementById('m-watch');
+  const on=watching.has(bc);
+  btn.textContent=on?'⭐ עוקב':'☆ עקוב';
+  btn.style.background=on?'#f5f3ff':'var(--bg)';
+  btn.style.color=on?'#7c3aed':'var(--text2)';
+  btn.style.borderColor=on?'#7c3aed':'var(--border)';
 }
-
-function toggleCartModal(barcode,name,price,storeId){
-  const idx=cart.findIndex(c=>c.barcode===barcode);
-  const btn=document.getElementById('modal-cart-btn');
-  if(idx>=0){cart.splice(idx,1);btn.textContent='+ הוסף לרשימה';btn.style.background='var(--white)';btn.style.color='var(--ink2)';}
-  else{cart.push({barcode,name,price,storeId,qty:1});btn.textContent='✓ ברשימה';btn.style.background='var(--green-bg)';btn.style.color='var(--green2)';}
+function tcModal(bc,name,price,sid){
+  const idx=cart.findIndex(c=>c.barcode===bc);
+  const btn=document.getElementById('m-cart');
+  if(idx>=0){cart.splice(idx,1);btn.textContent='+ הוסף';btn.style.background='var(--bg)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border)';}
+  else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓ ברשימה';btn.style.background='var(--green-light)';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
   saveCart();
 }
 
-// ── Settings ──
-function openSettings(){
-  buildSettings();
-  document.getElementById('settings-overlay').classList.add('open');
-  document.getElementById('settings-panel').classList.add('open');
-}
-
-function closeSettings(){
-  document.getElementById('settings-overlay').classList.remove('open');
-  document.getElementById('settings-panel').classList.remove('open');
-}
-
+// Settings
+function openSettings(){buildSettings();document.getElementById('settings-bg').classList.add('open');document.getElementById('settings-drawer').classList.add('open');}
+function closeSettings(){document.getElementById('settings-bg').classList.remove('open');document.getElementById('settings-drawer').classList.remove('open');}
 function buildSettings(){
-  const body=document.getElementById('sp-body');
-  const allCats=Object.keys(catMap).sort((a,b)=>
-    (catMap[b]?.length||0)-(catMap[a]?.length||0));
-  body.innerHTML='<div style="padding:8px 16px;font-size:0.7rem;color:var(--ink3)">לחץ להציג/הסתיר קטגוריה</div>'+
+  const allCats=Object.keys(catMap).sort((a,b)=>(catMap[b]?.length||0)-(catMap[a]?.length||0));
+  document.getElementById('settings-body').innerHTML=
+    '<div style="padding:8px 16px 4px;font-size:0.72rem;color:var(--text3)">הצג / הסתר קטגוריות</div>'+
     allCats.map(cat=>{
-      const m=CAT_META[cat]||{icon:'📦',label:cat};
-      const isOn=!hiddenCats.has(cat);
-      return `<div class="sp-item" onclick="toggleCat('${cat}')">
-        <span class="sp-icon">${m.icon}</span>
-        <span class="sp-label">${m.label}</span>
-        <span class="sp-count">${catMap[cat]?.length||0}</span>
-        <div class="sp-check ${isOn?'on':''}" id="spck-${cat}"></div>
+      const m=CAT[cat]||{i:'📦',l:cat};
+      const on=!hiddenCats.has(cat);
+      return `<div class="sd-item" onclick="toggleCat('${cat}')">
+        <span class="sd-icon">${m.i}</span>
+        <span class="sd-label">${m.l}</span>
+        <span class="sd-count">${catMap[cat]?.length||0}</span>
+        <div class="checkbox ${on?'on':''}" id="cb-${cat}"></div>
       </div>`;
     }).join('');
 }
-
 function toggleCat(cat){
   if(hiddenCats.has(cat))hiddenCats.delete(cat);else hiddenCats.add(cat);
-  const chk=document.getElementById('spck-'+cat);
-  if(chk)chk.className='sp-check'+(hiddenCats.has(cat)?'':' on');
+  const el=document.getElementById('cb-'+cat);
+  if(el)el.className='checkbox'+(hiddenCats.has(cat)?'':' on');
 }
-
 function applySettings(){
-  localStorage.setItem('mchiro_hidden',JSON.stringify([...hiddenCats]));
-  rebuildProducts();
-  buildSidebar();
-  closeSettings();
-  renderGrid();
+  localStorage.setItem('h',JSON.stringify([...hiddenCats]));
+  rebuildProducts();buildSidebar();closeSettings();render();
 }
 
 boot();
