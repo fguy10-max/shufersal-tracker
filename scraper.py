@@ -287,7 +287,15 @@ def main():
     print(f'מחירוסקופ רב-סניפי — {TODAY}')
     service = get_drive_service()
     folder_id = get_or_create_folder(service, DRIVE_FOLDER)
-    history = read_from_drive(service, folder_id, HISTORY_FILE) or {}
+    raw_history = read_from_drive(service, folder_id, HISTORY_FILE) or {}
+    # בדיקה שהמבנה תואם לגרסה החדשה (חלוקה לסניפים)
+    # אם המפתח הראשון הוא ברקוד (מבנה ישן) — מאפסים
+    first_key = next(iter(raw_history), None)
+    if first_key and first_key not in [s['id'] for s in STORES]:
+        print('  ⚠️ היסטוריה ישנה — מאפס ומתחיל מחדש')
+        history = {}
+    else:
+        history = raw_history
     all_dates = set(d for sh in history.values() for h in sh.values() for d in h.get('prices',{}))
     print(f'היסטוריה: {len(all_dates)} ימים')
 
