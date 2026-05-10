@@ -182,23 +182,38 @@ def scrape_citymarket(branch):
     import zipfile, io as _io, json as _json
 
     def bina_download(filename):
-        """מוריד קובץ ZIP מ-Bina ומחלץ את תוכן ה-XML"""
+        """מוריד קובץ מ-Bina — תומך ב-gzip וב-ZIP"""
         url = f'{BINA_BASE}/MainIO_Hok.aspx?WFileName={filename}'
         print(f'    {filename}')
         r = session.get(url, timeout=120)
         r.raise_for_status()
-        # הקבצים הם ZIP (לא gzip)
-        with zipfile.ZipFile(_io.BytesIO(r.content)) as z:
-            for name in z.namelist():
-                if name.endswith('.xml'):
-                    data = z.read(name)
-                    for enc in ['utf-8', 'windows-1255', 'iso-8859-8']:
-                        try:
-                            return data.decode(enc)
-                        except:
-                            pass
-                    return data.decode('utf-8', errors='replace')
-        return ''
+        raw = r.content
+
+        def decode_bytes(data):
+            for enc in ['utf-8', 'windows-1255', 'iso-8859-8']:
+                try:
+                    return data.decode(enc)
+                except:
+                    pass
+            return data.decode('utf-8', errors='replace')
+
+        # gzip
+        if raw[:2] == b'\x1f\x8b':
+            import gzip as _gz
+            return decode_bytes(_gz.decompress(raw))
+
+        # ZIP
+        try:
+            with zipfile.ZipFile(_io.BytesIO(raw)) as z:
+                for name in z.namelist():
+                    if name.endswith('.xml'):
+                        return decode_bytes(z.read(name))
+        except Exception:
+            pass
+
+        # XML ישיר
+        return decode_bytes(raw)
+
 
     # קבלת רשימת קבצים לסניף
     print(f'  מחפש קבצים לסניף {branch}...')
