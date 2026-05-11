@@ -117,7 +117,7 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 .grid .card { background:var(--bg); }
 
 /* List */
-.list-view { padding:0 20px 20px; display:flex; flex-direction:column; gap:0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); border-radius:0; }
+.list-view { margin:0 20px 20px; display:flex; flex-direction:column; gap:0; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
 
 /* Card — Grid */
 .card { background:var(--bg); padding:20px; cursor:pointer; transition:background 0.1s; animation:fadeIn 0.2s ease both; position:relative; }
@@ -170,9 +170,10 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 .action-btn.on-cart { background:var(--green-light); color:var(--green); border-color:var(--green); }
 
 /* List card */
-.list-card { display:grid; grid-template-columns:1fr auto; gap:16px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
+.list-card { display:grid; grid-template-columns:1fr auto; gap:16px; align-items:center; padding:14px 16px; border-bottom:2px solid var(--border); cursor:pointer; transition:background 0.1s; background:var(--bg); }
 .list-card:last-child { border-bottom:none; }
-.list-card:hover { background:var(--surface); margin:0 -20px; padding:12px 20px; }
+.list-card:hover { background:var(--surface); }
+.list-view { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
 
 /* Cart drawer */
 .drawer-bg { position:fixed; inset:0; background:rgba(0,0,0,0.3); z-index:500; opacity:0; pointer-events:none; transition:opacity 0.2s; }
@@ -264,6 +265,7 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
   .sb-label { display:none; }
   .main { padding-bottom:60px; overflow-x:hidden; }
   .grid { grid-template-columns:1fr 1fr; padding:0 10px 80px; gap:0; }
+  .list-view { margin:0 10px 80px; }
   .card { padding:14px 12px; }
   .card-name { font-size:0.88rem; }
   .price-main { font-size:1.5rem; }
@@ -471,6 +473,12 @@ function init() {
   // store tags removed
   buildSidebar();
   buildStoreFilter();
+  // Default to list view on mobile
+  if(window.innerWidth <= 720) {
+    curView = 'list';
+    document.getElementById('vbtn-grid').classList.remove('on');
+    document.getElementById('vbtn-list').classList.add('on');
+  }
   render();
   updateBadge();
 }
