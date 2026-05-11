@@ -184,12 +184,19 @@ def scrape_shufersal(store_id):
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')
         links = []  # list of (filename, url)
-        for a in soup.find_all('a', href=True):
+        for row in soup.find_all('tr'):
+            a = row.find('a', href=True)
+            if not a: continue
             href = a['href']
-            name = a.text.strip()
-            if any(x in href for x in ['.gz','.xml','Download','download']):
-                url = href if href.startswith('http') else SHUFERSAL_BASE + href
-                links.append((name, url))
+            if not any(x in href for x in ['.gz','.xml','Download','download']): continue
+            url = href if href.startswith('http') else SHUFERSAL_BASE + href
+            # filename is in the row text, not the link text
+            row_text = row.get_text(separator=' ')
+            # find the actual filename (contains ChainId 7290027600007)
+            import re
+            match = re.search(r'((?:Price|Promo)\S+[.]gz)', row_text, re.IGNORECASE)
+            name = match.group(1) if match else row_text.strip()
+            links.append((name, url))
         return links
     price_links = get_links(2); promo_links = get_links(3)
     print(f'  מחירים: {len(price_links)} | מבצעים: {len(promo_links)}')
