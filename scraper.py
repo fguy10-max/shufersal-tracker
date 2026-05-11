@@ -212,7 +212,9 @@ def scrape_shufersal(store_id):
         pd = {}
         for link in promo_full + promo_partial:
             pd.update(extract_promos(safe_parse_xml(download_content(link))))
+            print(f'    promo dict size after merge: {len(pd)}')
         cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
+        print(f'  products with matching barcode in pd: {sum(1 for p in products if p["barcode"] in pd)}')
         print(f'  {cnt} מבצעים')
     return products, {}
 
@@ -324,6 +326,7 @@ def scrape_citymarket(branch):
             roots_p   = safe_parse_xml(xml_promo)
             pd        = extract_promos(roots_p)
             cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
+            print(f'  pd size: {len(pd)} | matched: {cnt}')
             print(f'  {cnt} מבצעים')
         except Exception as e:
             print(f'  ⚠️ מבצעים: {e}')
