@@ -32,7 +32,7 @@
 
 * { margin:0; padding:0; box-sizing:border-box; }
 html { scroll-behavior: smooth; }
-body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 16px; }
+body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 16px; overflow-x:hidden; }
 
 /* Splash */
 #splash { position:fixed; inset:0; background:#111; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; transition:opacity 0.4s; }
@@ -257,20 +257,39 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 /* Responsive */
 @media(max-width:720px){
   .app { grid-template-columns:1fr; }
-  .sidebar { position:fixed; bottom:0; left:0; right:0; top:auto; height:auto; border-left:none; border-top:1px solid var(--border); display:flex; overflow-x:auto; overflow-y:hidden; z-index:50; background:var(--bg); padding:6px 0; }
-  .cat-item { display:inline-flex; flex-direction:column; border-right:none; border-top:2px solid transparent; padding:6px 12px; font-size:0.75rem; white-space:nowrap; align-items:center; gap:2px; }
+  .sidebar { position:fixed; bottom:0; left:0; right:0; top:auto; height:auto; border-left:none; border-top:1px solid var(--border); display:flex; overflow-x:auto; overflow-y:hidden; z-index:50; background:var(--bg); padding:4px 0; }
+  .cat-item { display:inline-flex; flex-direction:column; border-right:none; border-top:2px solid transparent; padding:5px 10px; font-size:0.72rem; white-space:nowrap; align-items:center; gap:2px; }
   .cat-item.active { border-top-color:var(--blue); border-right:none; background:transparent; }
   .cat-count, .cat-badge { display:none; }
   .sb-label { display:none; }
-  .main { padding-bottom:60px; }
-  .grid { grid-template-columns:1fr 1fr; padding:0 12px 80px; }
-  header { padding:0 12px; }
+  .main { padding-bottom:60px; overflow-x:hidden; }
+  .grid { grid-template-columns:1fr 1fr; padding:0 10px 80px; gap:0; }
+  .card { padding:14px 12px; }
+  .card-name { font-size:0.88rem; }
+  .price-main { font-size:1.5rem; }
+  header { padding:0 10px; gap:8px; }
+  header .h-pill span:not(.badge-count) { display:none; }
   .drawer { width:100%; }
   .settings-drawer { width:100%; }
-  .topbar,.search-row,.store-tags,.results-meta { padding-left:12px; padding-right:12px; }
-  .stats-strip { margin:0 12px 12px; }
+  .topbar { padding:12px 10px 0; }
+  .topbar-title { font-size:1rem; }
+  .filter-row { gap:4px; }
+  .fchip { padding:4px 10px; font-size:0.74rem; }
+  .search-row { padding:8px 10px; }
+  .store-filter { padding:0 10px 10px; gap:4px; }
+  .store-btn { padding:4px 10px; font-size:0.74rem; }
+  .results-meta { padding:0 10px 8px; }
+  .stats-strip { margin:0 10px 12px; }
+  .stat-n { font-size:1rem; }
+  .stat-l { font-size:0.6rem; }
+  .norm-price { padding:5px 8px; }
+  .sc-name { font-size:0.7rem; }
+  .sc-price { font-size:0.75rem; }
 }
-@media(max-width:400px) { .grid { grid-template-columns:1fr; } }
+@media(max-width:400px) {
+  .grid { grid-template-columns:1fr; }
+  .filter-row { overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; }
+}
 </style>
 </head>
 <body>
@@ -338,7 +357,7 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
     </div>
 
     <div class="store-filter" id="store-filter"></div>
-<div class="store-tags" id="store-tags"></div>
+
     <div class="results-meta" id="results-meta"></div>
 
     <div id="grid-area"></div>
@@ -449,12 +468,7 @@ function init() {
   document.getElementById('s-compare').textContent = shared.toLocaleString();
   document.getElementById('s-watch').textContent = watching.size;
   // store tags
-  document.getElementById('store-tags').innerHTML = STORES.map(s=>`
-    <div class="store-tag">
-      <div class="store-dot" style="background:${SC[s.id]||'#999'}"></div>
-      <span>${s.short}</span>
-      <span style="color:var(--text3)">${s.totalProducts.toLocaleString()}</span>
-    </div>`).join('');
+  // store tags removed
   buildSidebar();
   buildStoreFilter();
   render();
