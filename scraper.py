@@ -183,38 +183,44 @@ def scrape_shufersal(store_id):
             params={'catID':cat_id,'storeId':store_id,'sort':1,'order':1}, timeout=30)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')
-        links = []
+        links = []  # list of (filename, url)
         for a in soup.find_all('a', href=True):
             href = a['href']
+            name = a.text.strip()
             if any(x in href for x in ['.gz','.xml','Download','download']):
-                links.append(href if href.startswith('http') else SHUFERSAL_BASE + href)
+                url = href if href.startswith('http') else SHUFERSAL_BASE + href
+                links.append((name, url))
         return links
     price_links = get_links(2); promo_links = get_links(3)
     print(f'  מחירים: {len(price_links)} | מבצעים: {len(promo_links)}')
     if not price_links: return [], {}
-    # Download all price files and merge — full first, then partial on top
-    full_links    = [l for l in price_links if 'pricefull' in l.lower() or 'pricesfull' in l.lower()]
-    partial_links = [l for l in price_links if l not in full_links]
+
+    # Sort by filename: full files first, then partial
+    def is_full(name): return 'full' in name.lower()
+
+    price_full    = [(n,u) for n,u in price_links if is_full(n)]
+    price_partial = [(n,u) for n,u in price_links if not is_full(n)]
 
     products_dict = {}
-    for link in full_links + partial_links:
-        batch = extract_items(safe_parse_xml(download_content(link)))
+    for name, url in price_full + price_partial:
+        print(f'    {name}')
+        batch = extract_items(safe_parse_xml(download_content(url)))
         for p in batch:
             if p['barcode']:
                 products_dict[p['barcode']] = p
 
     products = list(products_dict.values())
-    print(f'  {len(products):,} מוצרים ({len(full_links)} full + {len(partial_links)} partial)')
+    print(f'  {len(products):,} מוצרים ({len(price_full)} full + {len(price_partial)} partial)')
 
     if promo_links:
-        promo_full    = [l for l in promo_links if 'promofull' in l.lower() or 'promosfull' in l.lower()]
-        promo_partial = [l for l in promo_links if l not in promo_full]
+        promo_full    = [(n,u) for n,u in promo_links if is_full(n)]
+        promo_partial = [(n,u) for n,u in promo_links if not is_full(n)]
         pd = {}
-        for link in promo_full + promo_partial:
-            pd.update(extract_promos(safe_parse_xml(download_content(link))))
-            print(f'    promo dict size after merge: {len(pd)}')
+        for name, url in promo_full + promo_partial:
+            print(f'    {name}')
+            pd.update(extract_promos(safe_parse_xml(download_content(url))))
+        print(f'  promo dict size: {len(pd)}')
         cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
-        print(f'  products with matching barcode in pd: {sum(1 for p in products if p["barcode"] in pd)}')
         print(f'  {cnt} מבצעים')
     return products, {}
 
