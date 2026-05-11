@@ -139,14 +139,41 @@ def extract_promos(roots):
     promos = {}
     for root in roots:
         for promo in root.iter('Promotion'):
-            desc = promo.findtext('PromotionDescription') or promo.findtext('RewardDescription') or ''
+            desc      = promo.findtext('PromotionDescription') or promo.findtext('RewardDescription') or ''
+            end       = promo.findtext('PromotionEndDateTime') or promo.findtext('PromotionEndDate') or ''
+            is_coupon = promo.findtext('AdditionalIsCoupon') or '0'
+            club_id   = promo.findtext('ClubID') or ''
+            club_num  = club_id.strip().split(' ')[0]  # e.g. '0', '3'
+
+            # Skip expired
+            if end and end[:10] < TODAY:
+                continue
+            # Skip credit card / employee clubs (ClubID != 0)
+            if club_num and club_num != '0':
+                continue
+
+            # Label coupons clearly
+            label = f'🎫 קופון: {desc}' if is_coupon == '1' else desc
+
+            # Format 1: Shufersal — <PromotionItem>
+            for pitem in promo.iter('PromotionItem'):
+                code = pitem.findtext('ItemCode') or ''
+                pp   = pitem.findtext('DiscountedPrice') or ''
+                if code and code != '0000000000000':
+                    promos[code] = {'promo': label, 'promoPrice': float(pp) if pp else None}
+            # Format 2: <Item>
             for item in promo.iter('Item'):
                 code = item.findtext('ItemCode') or item.findtext('Barcode') or ''
-                pp = item.findtext('ItemPrice') or ''
-                if code: promos[code] = {'promo':desc,'promoPrice':float(pp) if pp else None}
+                pp   = item.findtext('ItemPrice') or item.findtext('DiscountedPrice') or ''
+                if code and code != '0000000000000':
+                    promos[code] = {'promo': label, 'promoPrice': float(pp) if pp else None}
+            # Format 3: ItemCode directly in Promotion
+            direct = promo.findtext('ItemCode')
+            if direct and direct != '0000000000000':
+                pp = promo.findtext('DiscountedPrice') or ''
+                promos[direct] = {'promo': label, 'promoPrice': float(pp) if pp else None}
     return promos
 
-# Scrapers
 def scrape_shufersal(store_id):
     def get_links(cat_id):
         r = session.get(f'{SHUFERSAL_BASE}/FileObject/UpdateCategory',
