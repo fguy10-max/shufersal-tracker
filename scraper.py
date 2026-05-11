@@ -162,11 +162,26 @@ def scrape_shufersal(store_id):
     price_links = get_links(2); promo_links = get_links(3)
     print(f'  מחירים: {len(price_links)} | מבצעים: {len(promo_links)}')
     if not price_links: return [], {}
-    full = [l for l in price_links if 'full' in l.lower() or 'Full' in l]
-    products = extract_items(safe_parse_xml(download_content(full[0] if full else price_links[0])))
+    # Download all price files and merge — full first, then partial on top
+    full_links    = [l for l in price_links if 'pricefull' in l.lower() or 'pricesfull' in l.lower()]
+    partial_links = [l for l in price_links if l not in full_links]
+
+    products_dict = {}
+    for link in full_links + partial_links:
+        batch = extract_items(safe_parse_xml(download_content(link)))
+        for p in batch:
+            if p['barcode']:
+                products_dict[p['barcode']] = p
+
+    products = list(products_dict.values())
+    print(f'  {len(products):,} מוצרים ({len(full_links)} full + {len(partial_links)} partial)')
+
     if promo_links:
-        full_p = [l for l in promo_links if 'full' in l.lower()]
-        pd = extract_promos(safe_parse_xml(download_content(full_p[0] if full_p else promo_links[0])))
+        promo_full    = [l for l in promo_links if 'promofull' in l.lower() or 'promosfull' in l.lower()]
+        promo_partial = [l for l in promo_links if l not in promo_full]
+        pd = {}
+        for link in promo_full + promo_partial:
+            pd.update(extract_promos(safe_parse_xml(download_content(link))))
         cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
         print(f'  {cnt} מבצעים')
     return products, {}
