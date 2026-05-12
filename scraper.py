@@ -152,8 +152,8 @@ def extract_promos(roots):
             # Skip credit card / employee clubs (ClubID != 0)
             if club_num and club_num != '0':
                 continue
-            # Skip פיצויים (compensation coupons, not real deals)
-            if 'פיצוי' in desc or 'פיצויים' in desc:
+            # Skip פיצויים and סיבוס (compensation/irrelevant coupons)
+            if any(w in desc for w in ['פיצוי', 'פיצויים', 'סיבוס', 'SBOX']):
                 continue
 
             # Label coupons clearly
