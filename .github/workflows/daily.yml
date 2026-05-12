@@ -4,24 +4,20 @@ on:
   schedule:
     - cron: '0 5 * * *'   # Every day at 8:00 AM Israel time (UTC+3 summer)
     - cron: '0 11 * * *'  # Every day at 14:00 Israel time (UTC+3 summer)
-  workflow_dispatch:       # הרצה ידנית
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: pip install requests lxml beautifulsoup4 google-auth google-api-python-client
-
       - name: Run scraper
         env:
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
