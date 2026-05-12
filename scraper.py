@@ -28,6 +28,7 @@ CITYMARKET_BASE = 'https://www.citymarket-shops.co.il'
 DRIVE_FOLDER = 'מחירוסקופ'
 HISTORY_FILE = 'shufersal_history.json'
 OUTPUT_FILE  = 'shufersal_prices.json'
+PROMO_CACHE  = 'promo_cache.json'  # cached PromoFull data
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 session = requests.Session()
@@ -177,7 +178,7 @@ def extract_promos(roots):
                 promos[direct] = {'promo': label, 'promoPrice': float(pp) if pp else None}
     return promos
 
-def scrape_shufersal(store_id):
+def scrape_shufersal(store_id, service, folder_id):
     def get_links(cat_id):
         r = session.get(f'{SHUFERSAL_BASE}/FileObject/UpdateCategory',
             params={'catID':cat_id,'storeId':store_id,'sort':1,'order':1}, timeout=30)
@@ -223,10 +224,32 @@ def scrape_shufersal(store_id):
         promo_full    = [(n,u) for n,u in promo_links if is_full(n)]
         promo_partial = [(n,u) for n,u in promo_links if not is_full(n)]
         pd = {}
-        for name, url in promo_full + promo_partial:
-            print(f'    {name}')
+
+        if promo_full:
+            # PromoFull is available — download and cache to Drive
+            for name, url in promo_full:
+                print(f'    {name} (full)')
+                pd.update(extract_promos(safe_parse_xml(download_content(url))))
+            # Save to Drive cache
+            cache_key = f'promo_cache_{store_id}.json'
+            write_to_drive(service, folder_id, cache_key, pd)
+            print(f'  💾 PromoFull cached ({len(pd):,} items)')
+        else:
+            # No PromoFull — load from Drive cache
+            cache_key = f'promo_cache_{store_id}.json'
+            cached = read_from_drive(service, folder_id, cache_key)
+            if cached:
+                pd = cached
+                print(f'  📂 Loaded cached PromoFull ({len(pd):,} items)')
+            else:
+                print(f'  ⚠️ No PromoFull cache available')
+
+        # Merge partial promo on top (newer updates win)
+        for name, url in promo_partial:
+            print(f'    {name} (partial)')
             pd.update(extract_promos(safe_parse_xml(download_content(url))))
-        print(f'  promo dict size: {len(pd)}')
+
+        print(f'  promo dict size: {len(pd):,}')
         cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
         print(f'  {cnt} מבצעים')
     return products, {}
@@ -451,7 +474,7 @@ def main():
         print(f'\n{store["name"]}')
         try:
             if store['source'] == 'shufersal':
-                products, _ = scrape_shufersal(store['store_id'])
+                products, _ = scrape_shufersal(store['store_id'], service, folder_id)
             else:
                 products, _ = scrape_citymarket(store['store_branch'])
             print(f'  {len(products):,} מוצרים')
