@@ -491,6 +491,10 @@ function rebuildProducts() {
       for(const p of items) {
         const np={...p, _sid:store.id, _sname:store.short};
         if(compMap[p.barcode]) np._prices=compMap[p.barcode].prices;
+        // Filter out סיבוס coupons client-side
+        if(np.promo && (np.promo.includes('סיבוס') || np.promo.includes('SBOX'))) {
+          np.promo = null; np.promoPrice = null;
+        }
         catMap[cat].push(np);
         allProducts.push(np);
       }
@@ -617,7 +621,7 @@ function getProducts() {
   if(q) list = list.filter(p=>p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q));
   if(curFilter==='deal') list=list.filter(p=>p.promo);
   if(curFilter==='cheap') list=list.filter(p=>p.vsAvgPct<-5);
-  if(curFilter==='drop') list=list.filter(p=>p.changePct<-1);
+  if(curFilter==='drop') list=list.filter(p=>p.changePct!=null && p.changePct<-3 && p.changePct!==0);
   if(curFilter==='watch') list=list.filter(p=>watching.has(p.barcode));
   const sort = document.getElementById('sort').value;
   if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name,'he'));
@@ -626,16 +630,24 @@ function getProducts() {
   else if(sort==='cheap') list.sort((a,b)=>(a.vsAvgPct??999)-(b.vsAvgPct??999));
   else if(sort==='drop') list.sort((a,b)=>(a.changePct??0)-(b.changePct??0));
   else if(sort==='attractive') {
-    // ציון אטרקטיביות: שילוב של ירידת מחיר + זול מממוצע + מבצע
     const score = p => {
       let s = 0;
-      if(p.changePct && p.changePct < 0) s += Math.abs(p.changePct) * 2;  // ירידה שווה x2
-      if(p.vsAvgPct && p.vsAvgPct < 0)  s += Math.abs(p.vsAvgPct);        // זול מממוצע
-      if(p.promo)                         s += 15;                          // מבצע
-      if(p._prices && Object.keys(p._prices).length>=2) {                  // הכי זול בין סניפים
+      // ירידת מחיר משמעותית (מעל 3%) שלא חזרה לממוצע
+      if(p.changePct && p.changePct < -3) {
+        const dropScore = Math.abs(p.changePct) * 2;
+        // בונוס אם גם זול מממוצע (ירידה אמיתית, לא רק תנודה)
+        const avgBonus = (p.vsAvgPct && p.vsAvgPct < 0) ? Math.abs(p.vsAvgPct) : 0;
+        s += dropScore + avgBonus;
+      }
+      // זול מממוצע גם בלי ירידה
+      if(p.vsAvgPct && p.vsAvgPct < -5) s += Math.abs(p.vsAvgPct) * 0.5;
+      // מבצע אמיתי (לא קופון)
+      if(p.promo && !p.promo.includes('🎫')) s += 12;
+      // הכי זול בין סניפים
+      if(p._prices && Object.keys(p._prices).length>=2) {
         const vals = Object.values(p._prices);
         const isLowest = p.price === Math.min(...vals);
-        if(isLowest && Math.max(...vals) > Math.min(...vals)) s += 10;
+        if(isLowest && Math.max(...vals) > Math.min(...vals)) s += 8;
       }
       return s;
     };
@@ -663,7 +675,7 @@ function render() {
 }
 
 function mkCard(p,i,isList) {
-  const hasDeal=!!p.promo, hasDrop=p.changePct<-1, isCheap=p.vsAvgPct<-5;
+  const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3, isCheap=p.vsAvgPct!=null && p.vsAvgPct<-5;
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
   const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
   const delay=`animation-delay:${Math.min(i,15)*0.03}s`;
