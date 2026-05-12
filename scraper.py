@@ -440,7 +440,8 @@ def get_trend(bc, sh):
     prices = sh.get(bc,{}).get('prices',{}); dates = sorted(prices)
     if len(dates) < 2: return None, None, None
     curr, prev = prices[dates[-1]], prices[dates[-2]]
-    pct = round((curr-prev)/prev*100,1) if prev else None
+    raw_pct = round((curr-prev)/prev*100,1) if prev else None
+    pct = raw_pct if raw_pct and abs(raw_pct) >= 1 else None  # ignore tiny changes
     from datetime import date
     days = (date.fromisoformat(dates[-1])-date.fromisoformat(dates[-2])).days
     return prev, pct, days
