@@ -82,7 +82,6 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 .fchip.on { background:var(--text); color:#fff; border-color:var(--text); }
 .fchip.on-deal { background:var(--amber); color:#fff; border-color:var(--amber); }
 .fchip.on-cheap { background:var(--green); color:#fff; border-color:var(--green); }
-.fchip.on-compare { background:var(--blue); color:#fff; border-color:var(--blue); }
 .fchip.on-watch { background:#7c3aed; color:#fff; border-color:#7c3aed; }
 
 /* Search row */
@@ -349,7 +348,6 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
         <button class="fchip" onclick="setFilter('deal',this)">🔥 מבצע</button>
         <button class="fchip" onclick="setFilter('cheap',this)">💰 זול</button>
         <button class="fchip" onclick="setFilter('drop',this)">📉 ירד</button>
-        <button class="fchip" onclick="setFilter('compare',this)">🔄 השוואה</button>
         <button class="fchip" onclick="setFilter('watch',this)">⭐</button>
       </div>
     </div>
@@ -620,7 +618,6 @@ function getProducts() {
   if(curFilter==='deal') list=list.filter(p=>p.promo);
   if(curFilter==='cheap') list=list.filter(p=>p.vsAvgPct<-5);
   if(curFilter==='drop') list=list.filter(p=>p.changePct<-1);
-  if(curFilter==='compare') list=list.filter(p=>p._prices&&Object.keys(p._prices).length>=2);
   if(curFilter==='watch') list=list.filter(p=>watching.has(p.barcode));
   const sort = document.getElementById('sort').value;
   if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name,'he'));
@@ -1140,26 +1137,54 @@ function searchByBarcode(barcode) {
 
 // Parse effective unit price from promo description
 function parsePromoPrice(desc, regularPrice) {
-  if (!desc) return null;
-  // Pattern: Nב-PRICE or NבPRICE (e.g. "2ב20", "קטיף 2ב18", "4ב10.90")
-  const m = desc.match(/(\d+)\s*ב[-–]?\s*(\d+(?:[.,]\d+)?)/);
+  if (!desc || desc.includes('🎫')) return null;
+  let qty = 1, unitPrice = null;
+
+  // Pattern 1: digit BEFORE ב — "2ב22", "3ב18", "קטיף 2ב18"
+  let m = desc.match(/(\d+)\s*ב\s*(\d+(?:[.,]\d+)?)/);
   if (m) {
-    const qty = parseInt(m[1]);
+    qty = parseInt(m[1]);
     const total = parseFloat(m[2].replace(',', '.'));
-    const unitPrice = Math.round(total / qty * 100) / 100;
-    if (unitPrice < regularPrice) {
-      return { unitPrice, qty, total, savings: Math.round((regularPrice - unitPrice) / regularPrice * 100) };
+    unitPrice = Math.round(total / qty * 100) / 100;
+    if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
+  }
+
+  // Pattern 2: "ב2- ב 65", "ב2-ב60" — price after second ב
+  if (!unitPrice) {
+    m = desc.match(/ב\s*\d+\s*[-–]\s*ב\s*(\d+(?:[.,]\d+)?)/);
+    if (m) {
+      unitPrice = parseFloat(m[1].replace(',', '.'));
+      if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
     }
   }
-  // Pattern: fixed price at start (e.g. "15.90 לחם מחמצת")
-  const m2 = desc.match(/^(\d+(?:[.,]\d+)?)\s/);
-  if (m2) {
-    const price = parseFloat(m2[1].replace(',', '.'));
-    if (price > 0 && price < regularPrice) {
-      return { unitPrice: price, qty: 1, total: price, savings: Math.round((regularPrice - price) / regularPrice * 100) };
+
+  // Pattern 3: price after ב — "ב- 149", "ב79.90", "ב. 23.90"
+  if (!unitPrice) {
+    m = desc.match(/ב\s*[-–.]?\s*(\d+(?:[.,]\d+)?)/);
+    if (m) {
+      unitPrice = parseFloat(m[1].replace(',', '.'));
+      if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
     }
   }
-  return null;
+
+  // Pattern 4: 1+1
+  if (!unitPrice && desc.includes('1+1')) {
+    unitPrice = Math.round(regularPrice * 50) / 100;
+    qty = 2;
+  }
+
+  // Pattern 5: standalone price — "קטיף 4.90 בטטות", "15.90 לחם"
+  if (!unitPrice) {
+    m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=[\u05d0-\u05ea\s])/);
+    if (m) {
+      unitPrice = parseFloat(m[1].replace(',', '.'));
+      if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
+    }
+  }
+
+  if (!unitPrice) return null;
+  const savings = Math.round((regularPrice - unitPrice) / regularPrice * 100);
+  return { unitPrice, qty, savings };
 }
 
 boot();
