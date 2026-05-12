@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies
         run: pip install requests lxml beautifulsoup4 google-auth google-api-python-client
 
+      - name: Seed promo cache (run once then remove)
+        env:
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+        run: python seed_promo_cache.py
+
       - name: Run scraper
         env:
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
