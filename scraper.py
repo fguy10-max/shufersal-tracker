@@ -218,38 +218,33 @@ def scrape_shufersal(store_id, service, folder_id):
     products = list(products_dict.values())
     print(f'  {len(products):,} מוצרים ({len(price_full)} full + {len(price_partial)} partial)')
 
+    pd = {}
+
+    # Strategy: derive PromoFull URL from PriceFull filename (same timestamp)
+    # PriceFull7290027600007-001-287-20260512-030442.gz
+    # PromoFull7290027600007-001-287-20260512-030442.gz
+    price_full_names = [n for n,u in price_full + price_partial if 'pricefull' in n.lower()]
+    if price_full_names:
+        promo_full_name = price_full_names[0].replace('PriceFull', 'PromoFull').replace('pricefull', 'PromoFull')
+        # Build the download URL using the shufersal download endpoint
+        promo_full_url = f'{SHUFERSAL_BASE}/FileObject/GetFile?code={promo_full_name}'
+        try:
+            print(f'    {promo_full_name} (derived)')
+            text = download_content(promo_full_url)
+            pd.update(extract_promos(safe_parse_xml(text)))
+            print(f'  PromoFull: {len(pd):,} items')
+        except Exception as e:
+            print(f'  ⚠️ PromoFull download failed: {e}')
+
+    # Also download whatever promo files the site returns (partial updates)
     if promo_links:
-        promo_full    = [(n,u) for n,u in promo_links if is_full(n)]
-        promo_partial = [(n,u) for n,u in promo_links if not is_full(n)]
-        pd = {}
-
-        if promo_full:
-            # PromoFull is available — download and cache to Drive
-            for name, url in promo_full:
-                print(f'    {name} (full)')
-                pd.update(extract_promos(safe_parse_xml(download_content(url))))
-            # Save to Drive cache
-            cache_key = f'promo_cache_{store_id}.json'
-            write_to_drive(service, folder_id, cache_key, pd)
-            print(f'  💾 PromoFull cached ({len(pd):,} items)')
-        else:
-            # No PromoFull — load from Drive cache
-            cache_key = f'promo_cache_{store_id}.json'
-            cached = read_from_drive(service, folder_id, cache_key)
-            if cached:
-                pd = cached
-                print(f'  📂 Loaded cached PromoFull ({len(pd):,} items)')
-            else:
-                print(f'  ⚠️ No PromoFull cache available')
-
-        # Merge partial promo on top (newer updates win)
-        for name, url in promo_partial:
+        for name, url in promo_links:
             print(f'    {name} (partial)')
             pd.update(extract_promos(safe_parse_xml(download_content(url))))
 
-        print(f'  promo dict size: {len(pd):,}')
-        cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
-        print(f'  {cnt} מבצעים')
+    print(f'  promo dict size: {len(pd):,}')
+    cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
+    print(f'  {cnt} מבצעים')
     return products, {}
 
 def scrape_citymarket(branch):
