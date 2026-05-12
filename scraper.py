@@ -220,32 +220,37 @@ def scrape_shufersal(store_id, service, folder_id):
 
     pd = {}
 
-    # Strategy: derive PromoFull URL from PriceFull filename (same timestamp)
-    # PriceFull7290027600007-001-287-20260512-030442.gz
-    # PromoFull7290027600007-001-287-20260512-030442.gz
-    price_full_names = [n for n,u in price_full + price_partial if 'pricefull' in n.lower()]
-    if price_full_names:
-        # Extract filename — works for both clean names and messy row text
-        import re as _re
-        base = _re.search(r'(PriceFull[^\s.]+)', price_full_names[0], _re.IGNORECASE)
-        if base:
-            promo_full_name = base.group(1).replace('PriceFull', 'PromoFull') + '.gz'
+    # Step 1: Load PromoFull cache from GitHub
+    cache_url = f'https://raw.githubusercontent.com/{GH_REPO}/main/promo_cache_{store_id}.json'
+    try:
+        r_cache = requests.get(cache_url + '?t=' + TODAY, timeout=30)
+        if r_cache.status_code == 200:
+            pd = r_cache.json()
+            print(f'  📂 PromoFull cache: {len(pd):,} items')
         else:
-            promo_full_name = price_full_names[0].replace('PriceFull', 'PromoFull')
-        promo_full_url = f'{SHUFERSAL_BASE}/FileObject/GetFile?code={promo_full_name}'
-        try:
-            print(f'    {promo_full_name} (derived)')
-            text = download_content(promo_full_url)
-            pd.update(extract_promos(safe_parse_xml(text)))
-            print(f'  PromoFull: {len(pd):,} items')
-        except Exception as e:
-            print(f'  ⚠️ PromoFull download failed: {e}')
+            print(f'  ⚠️ No PromoFull cache found')
+    except Exception as e:
+        print(f'  ⚠️ Cache load failed: {e}')
 
-    # Also download whatever promo files the site returns (partial updates)
-    if promo_links:
-        for name, url in promo_links:
-            print(f'    {name} (partial)')
-            pd.update(extract_promos(safe_parse_xml(download_content(url))))
+    # Step 2: Try to get PromoFull directly from site (when available)
+    promo_full_links = [(n,u) for n,u in promo_links if is_full(n)]
+    if promo_full_links:
+        for name, url in promo_full_links:
+            print(f'    {name} (full - updating cache)')
+            fresh = extract_promos(safe_parse_xml(download_content(url)))
+            pd.update(fresh)
+            # Update cache in GitHub
+            try:
+                github_upload(f'promo_cache_{store_id}.json', pd)
+                print(f'  💾 Cache updated: {len(pd):,} items')
+            except Exception as e:
+                print(f'  ⚠️ Cache update failed: {e}')
+
+    # Step 3: Merge partial promo updates on top
+    promo_partial_links = [(n,u) for n,u in promo_links if not is_full(n)]
+    for name, url in promo_partial_links:
+        print(f'    {name} (partial)')
+        pd.update(extract_promos(safe_parse_xml(download_content(url))))
 
     print(f'  promo dict size: {len(pd):,}')
     cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
