@@ -720,10 +720,16 @@ function mkCard(p,i,isList) {
         <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col}">${p._sname}</span></div>
         <div class="card-name">${p.name}</div>
         ${tags ? `<div class="card-tags" style="margin-top:4px">${tags}</div>` : ''}
+        ${promoData ? `<div style="background:#fffbeb;border-right:3px solid #f59e0b;padding:5px 8px;border-radius:0 5px 5px 0;font-size:11px;color:#92400e;font-weight:500;margin-top:5px">🔥 ${p.promo}</div>` : ''}
         ${storeComp}
       </div>
       <div style="text-align:left;flex-shrink:0">
-        <div class="price-main">₪${p.price.toFixed(2)}</div>
+        ${promoData ? `
+        <div style="font-size:11px;color:var(--text2)">מחיר רגיל</div>
+        <div style="font-size:15px;color:var(--text2);font-weight:500;text-decoration:line-through">₪${p.price.toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--green);font-weight:500;margin-top:2px">במבצע</div>
+        <div class="price-main" style="color:var(--green)">₪${promoData.unitPrice.toFixed(2)}</div>
+        ` : `<div class="price-main">₪${p.price.toFixed(2)}</div>`}
         <div class="price-unit">${p.unit||''}</div>
         <div class="card-actions" style="margin-top:6px">
           <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
@@ -1137,7 +1143,7 @@ function searchByBarcode(barcode) {
 
 // Parse effective unit price from promo description
 function parsePromoPrice(desc, regularPrice) {
-  if (!desc || desc.includes('🎫')) return null;
+  if (!desc || desc.includes('🎫') || desc.includes('מעל קניה') || desc.includes('בקניה')) return null;
   let qty = 1, unitPrice = null;
 
   // Pattern 1: digit BEFORE ב — "2ב22", "3ב18", "קטיף 2ב18"
