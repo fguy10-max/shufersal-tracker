@@ -180,24 +180,29 @@ def extract_promos(roots):
 
 def scrape_shufersal(store_id, service, folder_id):
     def get_links(cat_id):
-        r = session.get(f'{SHUFERSAL_BASE}/FileObject/UpdateCategory',
-            params={'catID':cat_id,'storeId':store_id,'sort':1,'order':1}, timeout=30)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, 'html.parser')
+        import re
+        seen_urls = set()
         links = []  # list of (filename, url)
-        for row in soup.find_all('tr'):
-            a = row.find('a', href=True)
-            if not a: continue
-            href = a['href']
-            if not any(x in href for x in ['.gz','.xml','Download','download']): continue
-            url = href if href.startswith('http') else SHUFERSAL_BASE + href
-            # filename is in the row text, not the link text
-            row_text = row.get_text(separator=' ')
-            # find the actual filename (contains ChainId 7290027600007)
-            import re
-            match = re.search(r'((?:Price|Promo)\S+[.]gz)', row_text, re.IGNORECASE)
-            name = match.group(1) if match else row_text.strip()
-            links.append((name, url))
+
+        # Fetch twice: order=1 (newest first) and order=0 (oldest first)
+        # This ensures we get both PromoFull (older) and Promo (newer)
+        for order in [1, 0]:
+            r = session.get(f'{SHUFERSAL_BASE}/FileObject/UpdateCategory',
+                params={'catID':cat_id,'storeId':store_id,'sort':1,'order':order}, timeout=30)
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, 'html.parser')
+            for row in soup.find_all('tr'):
+                a = row.find('a', href=True)
+                if not a: continue
+                href = a['href']
+                if not any(x in href for x in ['.gz','.xml','Download','download']): continue
+                url = href if href.startswith('http') else SHUFERSAL_BASE + href
+                if url in seen_urls: continue
+                seen_urls.add(url)
+                row_text = row.get_text(separator=' ')
+                match = re.search(r'((?:Price|Promo)[A-Za-z0-9-_]+[.]gz)', row_text, re.IGNORECASE)
+                name = match.group(1) if match else row_text.strip()
+                links.append((name, url))
         return links
     price_links = get_links(2); promo_links = get_links(3)
     print(f'  מחירים: {len(price_links)} | מבצעים: {len(promo_links)}')
