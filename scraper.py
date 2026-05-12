@@ -225,8 +225,13 @@ def scrape_shufersal(store_id, service, folder_id):
     # PromoFull7290027600007-001-287-20260512-030442.gz
     price_full_names = [n for n,u in price_full + price_partial if 'pricefull' in n.lower()]
     if price_full_names:
-        promo_full_name = price_full_names[0].replace('PriceFull', 'PromoFull').replace('pricefull', 'PromoFull')
-        # Build the download URL using the shufersal download endpoint
+        # Extract filename — works for both clean names and messy row text
+        import re as _re
+        base = _re.search(r'(PriceFull[^\s.]+)', price_full_names[0], _re.IGNORECASE)
+        if base:
+            promo_full_name = base.group(1).replace('PriceFull', 'PromoFull') + '.gz'
+        else:
+            promo_full_name = price_full_names[0].replace('PriceFull', 'PromoFull')
         promo_full_url = f'{SHUFERSAL_BASE}/FileObject/GetFile?code={promo_full_name}'
         try:
             print(f'    {promo_full_name} (derived)')
