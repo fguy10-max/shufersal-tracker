@@ -882,6 +882,10 @@ function openProduct(bc,sid) {
     if(f&&store.id===sid){mainP={...f,_sname:store.short,_sid:sid};break;}
     if(f&&!mainP)mainP={...f,_sname:store.short,_sid:store.id};
   }
+  // Filter סיבוס in modal too
+  if(mainP?.promo && (mainP.promo.includes('סיבוס') || mainP.promo.includes('SBOX'))) {
+    mainP.promo = null; mainP.promoPrice = null;
+  }
   if(!mainP)return;
   const prices=compMap[bc]?.prices||{[sid]:mainP.price};
   const vals=Object.values(prices), minP=Math.min(...vals), maxP=Math.max(...vals);
