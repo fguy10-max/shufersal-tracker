@@ -492,7 +492,7 @@ function rebuildProducts() {
         const np={...p, _sid:store.id, _sname:store.short};
         if(compMap[p.barcode]) np._prices=compMap[p.barcode].prices;
         // Filter out סיבוס coupons client-side
-        if(np.promo && (np.promo.includes('סיבוס') || np.promo.includes('SBOX'))) {
+        if(np.promo && ['סיבוס','SBOX','תו זהב','ח"ע','ח.ע','קופון ח'].some(w => np.promo.includes(w))) {
           np.promo = null; np.promoPrice = null;
         }
         catMap[cat].push(np);
@@ -883,7 +883,7 @@ function openProduct(bc,sid) {
     if(f&&!mainP)mainP={...f,_sname:store.short,_sid:store.id};
   }
   // Filter סיבוס in modal too
-  if(mainP?.promo && (mainP.promo.includes('סיבוס') || mainP.promo.includes('SBOX'))) {
+  if(mainP?.promo && ['סיבוס','SBOX','תו זהב','ח"ע','ח.ע','קופון ח'].some(w => mainP.promo.includes(w))) {
     mainP.promo = null; mainP.promoPrice = null;
   }
   if(!mainP)return;
@@ -925,13 +925,13 @@ function openProduct(bc,sid) {
       </div>
     </div>`:''}
 
-    ${mainP.prevPrice?`
+    ${mainP.prevPrice && mainP.changePct && Math.abs(mainP.changePct)>=3?`
     <div class="modal-sec">
       <div class="modal-sec-label">שינוי מחיר</div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:1.3rem;font-weight:700;color:var(--blue)">₪${mainP.price}</span>
         <span style="text-decoration:line-through;color:var(--text3)">₪${mainP.prevPrice}</span>
-        <span class="tag tag-drop">ירד ${Math.abs(mainP.changePct)}% לפני ${mainP.daysAgo} ימים</span>
+        <span class="tag ${mainP.changePct<0?'tag-drop':'tag-deal'}">${mainP.changePct<0?'ירד':'עלה'} ${Math.abs(mainP.changePct)}% לפני ${mainP.daysAgo} ימים</span>
       </div>
     </div>`:''}
 
@@ -1159,10 +1159,11 @@ function searchByBarcode(barcode) {
 
 // Parse effective unit price from promo description
 function parsePromoPrice(desc, regularPrice) {
-  if (!desc || desc.includes('🎫') || desc.includes('מעל קניה') || desc.includes('בקניה')) return null;
+  if (!desc || desc.includes('🎫')) return null;
+  if (desc.includes('מעל קניה') || desc.includes('בקניה')) return null;
   let qty = 1, unitPrice = null;
 
-  // Pattern 1: digit BEFORE ב — "2ב22", "3ב18", "קטיף 2ב18"
+  // Pattern 1: NבPRICE — "2ב22", "3ב18", "קטיף 2ב18"
   let m = desc.match(/(\d+)\s*ב\s*(\d+(?:[.,]\d+)?)/);
   if (m) {
     qty = parseInt(m[1]);
@@ -1171,7 +1172,7 @@ function parsePromoPrice(desc, regularPrice) {
     if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
   }
 
-  // Pattern 2: "ב2- ב 65", "ב2-ב60" — price after second ב
+  // Pattern 2: "ב2- ב 65", "ב2-ב120" — price after SECOND ב
   if (!unitPrice) {
     m = desc.match(/ב\s*\d+\s*[-–]\s*ב\s*(\d+(?:[.,]\d+)?)/);
     if (m) {
@@ -1180,9 +1181,18 @@ function parsePromoPrice(desc, regularPrice) {
     }
   }
 
-  // Pattern 3: price after ב — "ב- 149", "ב79.90", "ב. 23.90"
+  // Pattern 3a: "ב79.90-" — price BEFORE dash
   if (!unitPrice) {
-    m = desc.match(/ב\s*[-–.]?\s*(\d+(?:[.,]\d+)?)/);
+    m = desc.match(/ב(\d+(?:[.,]\d+)?)\s*[-–]/);
+    if (m) {
+      unitPrice = parseFloat(m[1].replace(',', '.'));
+      if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
+    }
+  }
+
+  // Pattern 3b: "ב- 149", "ב. 23.90" — separator then price
+  if (!unitPrice) {
+    m = desc.match(/ב\s*[-–.]\s*(\d+(?:[.,]\d+)?)/);
     if (m) {
       unitPrice = parseFloat(m[1].replace(',', '.'));
       if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
@@ -1197,7 +1207,7 @@ function parsePromoPrice(desc, regularPrice) {
 
   // Pattern 5: standalone price — "קטיף 4.90 בטטות", "15.90 לחם"
   if (!unitPrice) {
-    m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=[\u05d0-\u05ea\s])/);
+    m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=\s)/);
     if (m) {
       unitPrice = parseFloat(m[1].replace(',', '.'));
       if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
