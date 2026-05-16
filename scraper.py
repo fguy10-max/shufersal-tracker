@@ -332,7 +332,7 @@ def scrape_citymarket(branch):
     print(f'  מחפש קבצים לסניף {branch}...')
     price_files = promo_files = []
 
-    for file_type, param in [('מחירים', 2), ('מבצעים', 3)]:
+    for file_type, param in [('מחירים', 2), ('מבצעים', 5)]:
         r = session.get(API_URL, params={
             'WFileType': param, 'WStore': 0, 'WBranch': branch
         }, timeout=30)
