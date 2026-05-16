@@ -747,8 +747,9 @@ function mkCard(p,i,isList) {
     </div>`;
 
   if(isList) return `
-    <div class="list-card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')">
-      <div>
+    <div class="list-card" style="${delay};display:flex;gap:10px;align-items:center" onclick="openProduct('${p.barcode}','${p._sid}')">
+      ${productImg(p.barcode, 48)}
+      <div style="flex:1;min-width:0">
         <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col}">${p._sname}</span></div>
         <div class="card-name">${p.name}</div>
         ${tags ? `<div class="card-tags" style="margin-top:4px">${tags}</div>` : ''}
@@ -767,6 +768,7 @@ function mkCard(p,i,isList) {
           <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
           <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
         </div>
+      </div>
       </div>
     </div>`;
 
@@ -913,8 +915,13 @@ function openProduct(bc,sid) {
 
   mc.innerHTML=`
     <div class="modal-drag"></div>
-    <div class="modal-title">${mainP.name}</div>
-    <div class="modal-brand">${mainP.brand||''} · ${mainP.unit||''}</div>
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">
+      ${productImg(mainP.barcode, 72)}
+      <div style="flex:1;min-width:0">
+        <div class="modal-title" style="margin-bottom:2px">${mainP.name}</div>
+        <div class="modal-brand" style="margin-bottom:0">${mainP.brand||''} · ${mainP.unit||''}</div>
+      </div>
+    </div>
 
     ${Object.keys(prices).length>=2?`
     <div class="modal-sec">
@@ -955,7 +962,48 @@ function openProduct(bc,sid) {
       </div>
     </div>`:''}
 
-    ${mainP.promo?`<div class="tag tag-deal" style="margin-bottom:12px;display:inline-block">🏷️ ${mainP.promo}</div>`:''}
+    \${mainP.allTimeLow != null ? `
+    <div class="modal-sec">
+      <div class="modal-sec-label">היסטוריית מחיר</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שפל כל הזמנים</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--green)">₪\${mainP.allTimeLow.toFixed(2)}</div>
+          \${mainP.price === mainP.allTimeLow ? '<div style="font-size:0.65rem;color:var(--green)">✓ עכשיו!</div>' : ''}
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">ממוצע</div>
+          <div style="font-size:1.1rem;font-weight:700">₪\${mainP.histAvg.toFixed(2)}</div>
+          \${mainP.price < mainP.histAvg ? \`<div style="font-size:0.65rem;color:var(--green)">↓\${Math.round((mainP.histAvg-mainP.price)/mainP.histAvg*100)}% מתחת</div>\` : mainP.price > mainP.histAvg ? \`<div style="font-size:0.65rem;color:#ef4444">↑\${Math.round((mainP.price-mainP.histAvg)/mainP.histAvg*100)}% מעל</div>\` : ''}
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שיא כל הזמנים</div>
+          <div style="font-size:1.1rem;font-weight:700;color:#ef4444">₪\${mainP.allTimeHigh.toFixed(2)}</div>
+          \${mainP.price === mainP.allTimeHigh ? '<div style="font-size:0.65rem;color:#ef4444">⚠️ עכשיו!</div>' : ''}
+        </div>
+      </div>
+      \${mainP.priceHistory?.length > 1 ? (() => {
+        const hist = mainP.priceHistory;
+        const lo = mainP.allTimeLow, hi = mainP.allTimeHigh;
+        const range = hi - lo || 1;
+        const W = 280, H = 48, pad = 6;
+        const pts = hist.map((h, i) => {
+          const x = pad + (i / (hist.length - 1)) * (W - pad*2);
+          const y = H - pad - ((h.p - lo) / range) * (H - pad*2);
+          return \`\${x.toFixed(1)},\${y.toFixed(1)}\`;
+        }).join(' ');
+        const currY = H - pad - ((hist[hist.length-1].p - lo) / range) * (H - pad*2);
+        return \`<svg viewBox="0 0 \${W} \${H}" style="width:100%;height:52px;overflow:visible">
+          <polyline points="\${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="\${(pad + (W-pad*2)).toFixed(1)}" cy="\${currY.toFixed(1)}" r="3" fill="var(--blue)"/>
+          <text x="\${pad}" y="\${H}" font-size="9" fill="var(--text3)">\${hist[0].d.slice(5)}</text>
+          <text x="\${W-pad}" y="\${H}" font-size="9" fill="var(--text3)" text-anchor="end">\${hist[hist.length-1].d.slice(5)}</text>
+        </svg>\`;
+      })() : ''}
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:4px">\${mainP.priceHistory?.length || 0} מדידות</div>
+    </div>` : ''}
+
+    \${mainP.promo?`<div class="tag tag-deal" style="margin-bottom:12px;display:inline-block">🏷️ \${mainP.promo}</div>`:``}
 
     <div style="display:flex;gap:8px;margin-top:8px">
       <button id="m-watch" onclick="twModal('${bc}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${isW?'#7c3aed':' var(--border)'};background:${isW?'#f5f3ff':'var(--bg)'};color:${isW?'#7c3aed':'var(--text2)'}">
@@ -999,8 +1047,35 @@ function buildSettings(){
 
   const allVisible = allCatKeys.every(c=>!hiddenCats.has(c));
 
+  const genAt = DATA.generatedAt ? new Date(DATA.generatedAt) : null;
+  const genStr = genAt ? genAt.toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const histDays = DATA.historyDays || 0;
+  const totalProds = DATA.stores?.reduce((s,st)=>s+(st.totalProducts||0),0)||0;
+  const totalPromos = DATA.stores?.reduce((s,st)=>s+(st.totalWithPromo||0),0)||0;
   document.getElementById('settings-body').innerHTML=
-    `<div class="sd-toggle-all">
+    `<div style="background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:700;font-size:0.85rem">📊 מצב מערכת</span>
+        <span style="font-size:0.7rem;color:var(--text3)">מחירוסקופ</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div style="color:var(--text3)">עדכון אחרון</div>
+        <div style="font-weight:600;text-align:left">${genStr}</div>
+        <div style="color:var(--text3)">מוצרים</div>
+        <div style="font-weight:600;text-align:left">${totalProds.toLocaleString()}</div>
+        <div style="color:var(--text3)">מבצעים</div>
+        <div style="font-weight:600;text-align:left">${totalPromos.toLocaleString()}</div>
+        <div style="color:var(--text3)">ימי היסטוריה</div>
+        <div style="font-weight:600;text-align:left">${histDays}</div>
+      </div>
+      ${DATA.stores?.map(s=>`
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px">
+          <div style="width:7px;height:7px;border-radius:50%;background:${SC[s.id]};flex-shrink:0"></div>
+          <span style="color:var(--text3);font-size:0.78rem">${s.short}</span>
+          <span style="margin-right:auto;font-size:0.78rem">${(s.totalProducts||0).toLocaleString()} מוצרים · ${(s.totalWithPromo||0).toLocaleString()} מבצעים</span>
+        </div>`).join('')||''}
+    </div>
+    <div class="sd-toggle-all">
       <span style="font-size:0.72rem;color:var(--text3)">קטגוריות</span>
       <button class="sd-toggle-btn" onclick="toggleAllCats()">${allVisible?'הסר הכל':'בחר הכל'}</button>
     </div>`+
@@ -1186,6 +1261,17 @@ function searchByBarcode(barcode) {
 
 
 // Parse effective unit price from promo description
+function productImg(bc, size=64) {
+  if(!bc) return '';
+  const cdn = `https://d226b0iufwcjmj.cloudfront.net/global/sys/images/${bc}.jpg`;
+  const off = bc.length===13
+    ? `https://images.openfoodfacts.org/images/products/${bc.slice(0,3)}/${bc.slice(3,6)}/${bc.slice(6,9)}/${bc.slice(9)}/front.400.jpg`
+    : '';
+  return `<img src="${cdn}" loading="lazy"
+    onerror="if(this.dataset.t==='1'){this.style.display='none'}else{this.dataset.t='1';this.src='${off}'}"
+    style="width:${size}px;height:${size}px;object-fit:contain;border-radius:6px;flex-shrink:0">`;
+}
+
 function parsePromoPrice(desc, regularPrice) {
   if (!desc || desc.includes('🎫')) return null;
   if (desc.includes('מעל קניה') || desc.includes('בקניה')) return null;
