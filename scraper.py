@@ -452,11 +452,23 @@ def update_history(history, store_id, products):
 def get_trend(bc, sh):
     prices = sh.get(bc,{}).get('prices',{}); dates = sorted(prices)
     if len(dates) < 2: return None, None, None
-    curr, prev = prices[dates[-1]], prices[dates[-2]]
-    raw_pct = round((curr-prev)/prev*100,1) if prev else None
-    pct = raw_pct if raw_pct and abs(raw_pct) >= 1 else None  # ignore tiny changes
     from datetime import date
-    days = (date.fromisoformat(dates[-1])-date.fromisoformat(dates[-2])).days
+    curr_date, curr = dates[-1], prices[dates[-1]]
+    # Find the last date where price was DIFFERENT from current (meaningful change)
+    prev_date, prev = None, None
+    for d in reversed(dates[:-1]):
+        if abs(prices[d] - curr) / curr > 0.005:  # more than 0.5% different
+            prev_date, prev = d, prices[d]
+            break
+    # If no meaningful change found, use most recent prev for "stable" signal
+    if prev is None:
+        prev_date, prev = dates[-2], prices[dates[-2]]
+        pct = None  # stable — no change to report
+        days = (date.fromisoformat(curr_date)-date.fromisoformat(prev_date)).days
+        return prev, pct, days
+    raw_pct = round((curr-prev)/prev*100,1)
+    pct = raw_pct if abs(raw_pct) >= 1 else None
+    days = (date.fromisoformat(curr_date)-date.fromisoformat(prev_date)).days
     return prev, pct, days
 
 def avg_similar(bc, sh):
@@ -498,13 +510,32 @@ def main():
             new, upd = update_history(history, store['id'], products)
             print(f'  {new} חדשים | {upd} עודכנו')
             sh = history.get(store['id'], {})
+            # Combined history from all stores for cross-store avg
+            combined_sh = {}
+            for sid, sdata in history.items():
+                for bc2, hdata in sdata.items():
+                    if bc2 not in combined_sh:
+                        combined_sh[bc2] = dict(hdata)
+                    elif hdata.get('pricePer100'):
+                        combined_sh[bc2]['pricePer100'] = hdata['pricePer100']
             for p in products:
                 bc = p['barcode']
                 prev_price, pct, days = get_trend(bc, sh)
-                avg, n = avg_similar(bc, sh)
+                avg, n = avg_similar(bc, combined_sh)
                 vs_avg = round((p['pricePer100']-avg)/avg*100,1) if avg and p.get('pricePer100') else None
+                # Price history stats for modal
+                ph = sh.get(bc, {}).get('prices', {})
+                ph_vals = list(ph.values()) if ph else []
+                ph_dates = sorted(ph.keys()) if ph else []
+                price_history = [{'d': d, 'p': ph[d]} for d in ph_dates]
+                all_time_low  = min(ph_vals) if ph_vals else None
+                all_time_high = max(ph_vals) if ph_vals else None
+                hist_avg      = round(sum(ph_vals)/len(ph_vals), 2) if ph_vals else None
                 p.update({'prevPrice':prev_price,'changePct':pct,'daysAgo':days,
-                          'avgSimilarPer100':avg,'vsAvgPct':vs_avg,'nSimilar':n})
+                          'avgSimilarPer100':avg,'vsAvgPct':vs_avg,'nSimilar':n,
+                          'priceHistory': price_history,
+                          'allTimeLow': all_time_low, 'allTimeHigh': all_time_high,
+                          'histAvg': hist_avg})
             categorized = defaultdict(list)
             for p in products:
                 p['_cat'] = categorize(p['name'], p.get('brand',''))
