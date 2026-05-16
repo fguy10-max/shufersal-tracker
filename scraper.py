@@ -143,7 +143,10 @@ def extract_promos(roots):
             desc      = promo.findtext('PromotionDescription') or promo.findtext('RewardDescription') or ''
             end       = promo.findtext('PromotionEndDateTime') or promo.findtext('PromotionEndDate') or ''
             is_coupon = promo.findtext('AdditionalIsCoupon') or '0'
-            club_id   = promo.findtext('ClubID') or ''
+            # ClubID varies by chain: direct or nested under <Clubs><ClubId>
+            club_id   = (promo.findtext('ClubID') or
+                         promo.findtext('.//ClubId') or
+                         promo.findtext('ClubId') or '')
             club_num  = club_id.strip().split(' ')[0]  # e.g. '0', '3'
 
             # Skip expired
