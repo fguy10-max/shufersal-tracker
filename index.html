@@ -641,12 +641,22 @@ function getProducts() {
       }
       // זול מממוצע גם בלי ירידה
       if(p.vsAvgPct && p.vsAvgPct < -5) s += Math.abs(p.vsAvgPct) * 0.5;
-      // מבצע אמיתי (לא קופון)
-      if(p.promo && !p.promo.includes('🎫')) s += 12;
-      // הכי זול בין סניפים
+      // מבצע אמיתי — ניקוד לפי גודל החיסכון
+      if(p.promo && !p.promo.includes('🎫')) {
+        const ppA = parsePromoPrice(p.promo, p.price);
+        if(ppA?.unitPrice) {
+          const savingsPct = Math.round((p.price - ppA.unitPrice) / p.price * 100);
+          s += 8 + Math.min(savingsPct * 0.5, 15); // מקסימום 23 נקודות
+        } else {
+          s += 8;
+        }
+      }
+      // הכי זול בין סניפים (כולל מחיר מבצע)
       if(p._prices && Object.keys(p._prices).length>=2) {
         const vals = Object.values(p._prices);
-        const isLowest = p.price === Math.min(...vals);
+        const pp = parsePromoPrice(p.promo, p.price);
+        const effPrice = pp?.unitPrice ?? p.price;
+        const isLowest = effPrice === Math.min(...vals, effPrice);
         if(isLowest && Math.max(...vals) > Math.min(...vals)) s += 8;
       }
       return s;
@@ -675,7 +685,11 @@ function render() {
 }
 
 function mkCard(p,i,isList) {
-  const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3, isCheap=p.vsAvgPct!=null && p.vsAvgPct<-5;
+  const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3;
+  const pp0 = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
+  const effP0 = pp0?.unitPrice ?? p.price;
+  const effVsAvg = p.vsAvgPct!=null ? Math.round((effP0/p.price - 1 + p.vsAvgPct/100) * 100) : p.vsAvgPct;
+  const isCheap = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
   const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
   const delay=`animation-delay:${Math.min(i,15)*0.03}s`;
@@ -1118,12 +1132,20 @@ function showScanResult(barcode) {
     const storeRows = STORES.map(s => {
       const p = found.find(f => f._sid === s.id);
       const price = prices[s.id] ?? p?.price;
-      const isBest = price !== undefined && price === minP && vals.length > 1;
+      const pp = p ? parsePromoPrice(p.promo, p.price) : null;
+      const effectivePrice = pp?.unitPrice ?? price;
+      const isBest = effectivePrice !== undefined && effectivePrice === minP && vals.length > 1;
       return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
         <div style="width:8px;height:8px;border-radius:50%;background:${SC[s.id]};flex-shrink:0"></div>
         <div style="flex:1;font-size:0.85rem;font-weight:500">${s.short}</div>
         ${price !== undefined
-          ? `<div style="font-size:1rem;font-weight:700;color:${isBest?'var(--green)':'var(--text)'}"">₪${price.toFixed(2)}</div>
+          ? `<div style="text-align:left">
+               ${pp?.unitPrice && pp.unitPrice < price
+                 ? `<div style="font-size:0.75rem;color:var(--text3);text-decoration:line-through">₪${price.toFixed(2)}</div>
+                    <div style="font-size:1rem;font-weight:700;color:var(--green)">₪${pp.unitPrice.toFixed(2)}</div>`
+                 : `<div style="font-size:1rem;font-weight:700;color:${isBest?'var(--green)':'var(--text)'}">₪${price.toFixed(2)}</div>`
+               }
+             </div>
              ${isBest&&vals.length>1?'<div style="font-size:0.7rem;background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600">הכי זול</div>':''}`
           : '<div style="font-size:0.85rem;color:var(--text3);font-style:italic">לא נמצא</div>'}
       </div>`;
@@ -1207,7 +1229,7 @@ function parsePromoPrice(desc, regularPrice) {
 
   // Pattern 5: standalone price — "קטיף 4.90 בטטות", "15.90 לחם"
   if (!unitPrice) {
-    m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=\s)/);
+    m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=\s|$)/);
     if (m) {
       unitPrice = parseFloat(m[1].replace(',', '.'));
       if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
