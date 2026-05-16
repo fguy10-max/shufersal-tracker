@@ -359,12 +359,17 @@ def scrape_citymarket(branch):
     products = list(all_products.values())
     print(f'  ✅ {len(products):,} מוצרים ייחודיים')
 
-    # מבצעים — רק הקובץ הכי עדכני
+    # מבצעים — צובר את כל הקבצים מהישן לחדש (כמו מחירים)
     if promo_files:
         try:
-            xml_promo = bina_download_raw(promo_files[0]['FileNm'])
-            roots_p   = safe_parse_xml(xml_promo)
-            pd        = extract_promos(roots_p)
+            pd = {}
+            for f in reversed(promo_files):  # מהישן לחדש — חדש מנצח
+                try:
+                    xml_promo = bina_download_raw(f['FileNm'])
+                    roots_p   = safe_parse_xml(xml_promo)
+                    pd.update(extract_promos(roots_p))
+                except Exception as e:
+                    print(f'    ⚠️ {f["FileNm"]}: {e}')
             cnt = sum(1 for p in products if p['barcode'] in pd and p.update(pd[p['barcode']]) is None)
             print(f'  pd size: {len(pd)} | matched: {cnt}')
             print(f'  {cnt} מבצעים')
