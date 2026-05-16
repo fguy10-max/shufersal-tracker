@@ -443,14 +443,34 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 const DATA_URL = 'https://raw.githubusercontent.com/fguy10-max/shufersal-tracker/main/shufersal_prices.json';
 
 const CAT = {
-  dairy:{i:'🥛',l:'חלב'}, meat:{i:'🍗',l:'בשר'}, fish:{i:'🐟',l:'דגים'},
-  produce:{i:'🥦',l:'ירקות'}, bakery:{i:'🍞',l:'לחם'}, cookies:{i:'🍪',l:'עוגיות'},
-  chocolate:{i:'🍫',l:'שוקולד'}, candy:{i:'🍬',l:'ממתקים'}, snacks:{i:'🍿',l:'חטיפים'},
-  beverages:{i:'🧃',l:'משקאות'}, coffee:{i:'☕',l:'קפה'}, tea:{i:'🍵',l:'תה'},
-  oil:{i:'🫒',l:'שמנים'}, grains:{i:'🌾',l:'דגנים'}, breakfast:{i:'🥣',l:'בוקר'},
-  pantry:{i:'🥫',l:'שימורים'}, frozen:{i:'❄️',l:'קפואים'}, alcohol:{i:'🍺',l:'אלכוהול'},
-  hygiene:{i:'🧴',l:'טיפוח'}, cleaning:{i:'🧹',l:'ניקיון'}, baby:{i:'👶',l:'תינוקות'},
-  pets:{i:'🐾',l:'חיות'}, other:{i:'📦',l:'אחר'},
+  dairy:    {i:'🥛',l:'חלב ומוצרי חלב'},
+  eggs:     {i:'🥚',l:'ביצים'},
+  poultry:  {i:'🍗',l:'עוף'},
+  meat:     {i:'🥩',l:'בשר'},
+  fish:     {i:'🐟',l:'דגים ופירות ים'},
+  produce:  {i:'🥦',l:'ירקות ופירות'},
+  bakery:   {i:'🍞',l:'לחם ומאפים'},
+  cakes:    {i:'🎂',l:'עוגות ומאפים מתוקים'},
+  cookies:  {i:'🍪',l:'עוגיות וקרקרים'},
+  chocolate:{i:'🍫',l:'שוקולד'},
+  candy:    {i:'🍬',l:'ממתקים'},
+  snacks:   {i:'🍿',l:'חטיפים'},
+  nuts:     {i:'🥜',l:'אגוזים וגרעינים'},
+  beverages:{i:'🧃',l:'משקאות'},
+  coffee:   {i:'☕',l:'קפה'},
+  tea:      {i:'🍵',l:'תה'},
+  condiments:{i:'🫒',l:'שמנים ורטבים'},
+  grains:   {i:'🌾',l:'דגנים וקטניות'},
+  breakfast:{i:'🥣',l:'ארוחת בוקר'},
+  spices:   {i:'🌶️',l:'תבלינים'},
+  pantry:   {i:'🥫',l:'שימורים ומזון ארוז'},
+  frozen:   {i:'❄️',l:'מוצרים קפואים'},
+  alcohol:  {i:'🍺',l:'אלכוהול'},
+  hygiene:  {i:'🧴',l:'טיפוח וגהות'},
+  cleaning: {i:'🧹',l:'ניקיון הבית'},
+  baby:     {i:'👶',l:'תינוקות'},
+  pets:     {i:'🐾',l:'חיות מחמד'},
+  other:    {i:'📦',l:'אחר'},
 };
 const SC = { sheli_shabit:'#1d4ed8', express_histadrut:'#15803d', citymarket_givataim:'#b45309' };
 const DEFAULT_HIDDEN = ['alcohol','baby','pets','other'];
@@ -962,48 +982,35 @@ function openProduct(bc,sid) {
       </div>
     </div>`:''}
 
-    \${mainP.allTimeLow != null ? `
+    ${mainP.allTimeLow != null ? `
     <div class="modal-sec">
       <div class="modal-sec-label">היסטוריית מחיר</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שפל כל הזמנים</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--green)">₪\${mainP.allTimeLow.toFixed(2)}</div>
-          \${mainP.price === mainP.allTimeLow ? '<div style="font-size:0.65rem;color:var(--green)">✓ עכשיו!</div>' : ''}
+          <div style="font-size:1.1rem;font-weight:700;color:var(--green)">&#x20AA;${mainP.allTimeLow.toFixed(2)}</div>
+          ${mainP.price === mainP.allTimeLow ? '<div style="font-size:0.65rem;color:var(--green)">✓ עכשיו!</div>' : ''}
         </div>
         <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">ממוצע</div>
-          <div style="font-size:1.1rem;font-weight:700">₪\${mainP.histAvg.toFixed(2)}</div>
-          \${mainP.price < mainP.histAvg ? \`<div style="font-size:0.65rem;color:var(--green)">↓\${Math.round((mainP.histAvg-mainP.price)/mainP.histAvg*100)}% מתחת</div>\` : mainP.price > mainP.histAvg ? \`<div style="font-size:0.65rem;color:#ef4444">↑\${Math.round((mainP.price-mainP.histAvg)/mainP.histAvg*100)}% מעל</div>\` : ''}
+          <div style="font-size:1.1rem;font-weight:700">&#x20AA;${mainP.histAvg.toFixed(2)}</div>
+          ${mainP.price < mainP.histAvg
+            ? '<div style="font-size:0.65rem;color:var(--green)">↓' + Math.round((mainP.histAvg-mainP.price)/mainP.histAvg*100) + '% מתחת</div>'
+            : mainP.price > mainP.histAvg
+            ? '<div style="font-size:0.65rem;color:#ef4444">↑' + Math.round((mainP.price-mainP.histAvg)/mainP.histAvg*100) + '% מעל</div>'
+            : ''}
         </div>
         <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שיא כל הזמנים</div>
-          <div style="font-size:1.1rem;font-weight:700;color:#ef4444">₪\${mainP.allTimeHigh.toFixed(2)}</div>
-          \${mainP.price === mainP.allTimeHigh ? '<div style="font-size:0.65rem;color:#ef4444">⚠️ עכשיו!</div>' : ''}
+          <div style="font-size:1.1rem;font-weight:700;color:#ef4444">&#x20AA;${mainP.allTimeHigh.toFixed(2)}</div>
+          ${mainP.price === mainP.allTimeHigh ? '<div style="font-size:0.65rem;color:#ef4444">⚠️ עכשיו!</div>' : ''}
         </div>
       </div>
-      \${mainP.priceHistory?.length > 1 ? (() => {
-        const hist = mainP.priceHistory;
-        const lo = mainP.allTimeLow, hi = mainP.allTimeHigh;
-        const range = hi - lo || 1;
-        const W = 280, H = 48, pad = 6;
-        const pts = hist.map((h, i) => {
-          const x = pad + (i / (hist.length - 1)) * (W - pad*2);
-          const y = H - pad - ((h.p - lo) / range) * (H - pad*2);
-          return \`\${x.toFixed(1)},\${y.toFixed(1)}\`;
-        }).join(' ');
-        const currY = H - pad - ((hist[hist.length-1].p - lo) / range) * (H - pad*2);
-        return \`<svg viewBox="0 0 \${W} \${H}" style="width:100%;height:52px;overflow:visible">
-          <polyline points="\${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/>
-          <circle cx="\${(pad + (W-pad*2)).toFixed(1)}" cy="\${currY.toFixed(1)}" r="3" fill="var(--blue)"/>
-          <text x="\${pad}" y="\${H}" font-size="9" fill="var(--text3)">\${hist[0].d.slice(5)}</text>
-          <text x="\${W-pad}" y="\${H}" font-size="9" fill="var(--text3)" text-anchor="end">\${hist[hist.length-1].d.slice(5)}</text>
-        </svg>\`;
-      })() : ''}
-      <div style="font-size:0.72rem;color:var(--text3);margin-top:4px">\${mainP.priceHistory?.length || 0} מדידות</div>
+      ${buildSparkline(mainP.priceHistory, mainP.allTimeLow, mainP.allTimeHigh)}
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:4px">${mainP.priceHistory?.length || 0} מדידות</div>
     </div>` : ''}
 
-    \${mainP.promo?`<div class="tag tag-deal" style="margin-bottom:12px;display:inline-block">🏷️ \${mainP.promo}</div>`:``}
+    ${mainP.promo?`<div class="tag tag-deal" style="margin-bottom:12px;display:inline-block">🏷️ ${mainP.promo}</div>`:``}
 
     <div style="display:flex;gap:8px;margin-top:8px">
       <button id="m-watch" onclick="twModal('${bc}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${isW?'#7c3aed':' var(--border)'};background:${isW?'#f5f3ff':'var(--bg)'};color:${isW?'#7c3aed':'var(--text2)'}">
@@ -1261,6 +1268,26 @@ function searchByBarcode(barcode) {
 
 
 // Parse effective unit price from promo description
+function buildSparkline(history, lo, hi) {
+  if (!history || history.length < 2) return '';
+  const range = hi - lo || 1;
+  const W = 280, H = 48, pad = 6;
+  const pts = history.map((h, i) => {
+    const x = pad + (i / (history.length - 1)) * (W - pad*2);
+    const y = H - pad - ((h.p - lo) / range) * (H - pad*2);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  const last = history[history.length-1];
+  const currY = H - pad - ((last.p - lo) / range) * (H - pad*2);
+  const cx = (pad + (W - pad*2)).toFixed(1);
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:52px;overflow:visible;display:block">' +
+    '<polyline points="' + pts + '" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<circle cx="' + cx + '" cy="' + currY.toFixed(1) + '" r="3.5" fill="var(--blue)"/>' +
+    '<text x="' + pad + '" y="' + H + '" font-size="9" fill="var(--text3)">' + history[0].d.slice(5) + '</text>' +
+    '<text x="' + (W-pad) + '" y="' + H + '" font-size="9" fill="var(--text3)" text-anchor="end">' + last.d.slice(5) + '</text>' +
+    '</svg>';
+}
+
 function productImg(bc, size=64) {
   if(!bc) return '';
   const cdn = `https://d226b0iufwcjmj.cloudfront.net/global/sys/images/${bc}.jpg`;
