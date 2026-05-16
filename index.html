@@ -628,7 +628,13 @@ function getProducts() {
   else if(sort==='price_asc') list.sort((a,b)=>a.price-b.price);
   else if(sort==='price_desc') list.sort((a,b)=>b.price-a.price);
   else if(sort==='cheap') list.sort((a,b)=>(a.vsAvgPct??999)-(b.vsAvgPct??999));
-  else if(sort==='drop') list.sort((a,b)=>(a.changePct??0)-(b.changePct??0));
+  else if(sort==='drop') list.sort((a,b)=>{
+    // null = no history, push to bottom
+    if(a.changePct==null && b.changePct==null) return 0;
+    if(a.changePct==null) return 1;
+    if(b.changePct==null) return -1;
+    return a.changePct - b.changePct;
+  });
   else if(sort==='attractive') {
     const score = p => {
       let s = 0;
