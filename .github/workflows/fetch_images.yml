@@ -1,0 +1,52 @@
+name: 🖼️ מחירוסקופ — תמונות מוצרים
+
+on:
+  # Run manually from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'full = all barcodes | new = only missing ones'
+        required: true
+        default: 'new'
+        type: choice
+        options:
+          - new
+          - full
+
+  # Also run automatically after each daily scrape
+  workflow_run:
+    workflows: ["🛒 מחירוסקופ — עדכון יומי"]
+    types:
+      - completed
+
+jobs:
+  fetch-images:
+    runs-on: ubuntu-latest
+    # Only run if triggered manually, or if the daily scrape succeeded
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch images (new only)
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.mode == 'new'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: python fetch_images.py --new
+
+      - name: Fetch images (full)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'full'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: python fetch_images.py
