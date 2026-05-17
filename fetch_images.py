@@ -20,8 +20,8 @@ GH_REPO   = 'fguy10-max/shufersal-tracker'
 GH_API    = 'https://api.github.com'
 PRICES_URL = f'https://raw.githubusercontent.com/{GH_REPO}/main/shufersal_prices.json'
 IMG_FOLDER = 'imgs'
-MAX_WORKERS = 10      # parallel downloads
-SLEEP_BETWEEN_UPLOADS = 0.3  # seconds between GitHub API calls
+MAX_WORKERS = 15      # parallel downloads
+SLEEP_BETWEEN_UPLOADS = 0.1  # seconds between GitHub API calls
 
 # ── CDN fallback chain ──────────────────────────────────────────────
 def image_urls(bc):
@@ -78,14 +78,18 @@ def download_image(bc):
     """Try each CDN URL in order, return (bc, image_bytes, source) or (bc, None, None)."""
     for url in image_urls(bc):
         try:
-            r = img_session.get(url, timeout=8, stream=True)
+            r = img_session.get(url, timeout=3, stream=True)
             if r.status_code == 200:
                 ct = r.headers.get('Content-Type', '')
                 if 'image' in ct:
                     data = r.content
-                    if len(data) > 1000:  # skip tiny/empty responses
+                    if len(data) > 1000:
                         source = 'CDN' if 'cloudfront' in url else 'OFF'
                         return bc, data, source
+            elif r.status_code in (403, 404):
+                continue  # fast fail, try next
+        except requests.exceptions.Timeout:
+            continue  # timeout, try next URL
         except Exception:
             continue
     return bc, None, None
@@ -146,7 +150,7 @@ def main():
             if img_data:
                 # Upload to GitHub
                 path = f'{IMG_FOLDER}/{bc}.jpg'
-                sha = gh_file_exists(path) if incremental else None
+                sha = None  # full mode: always overwrite, no per-file check needed
                 success = gh_upload_image(path, img_data, sha)
                 if success:
                     ok += 1
