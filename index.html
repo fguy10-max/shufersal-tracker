@@ -789,7 +789,6 @@ function mkCard(p,i,isList) {
           <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
         </div>
       </div>
-      </div>
     </div>`;
 
   return `
@@ -1294,8 +1293,8 @@ function productImg(bc, size=64) {
   const off = bc.length===13
     ? `https://images.openfoodfacts.org/images/products/${bc.slice(0,3)}/${bc.slice(3,6)}/${bc.slice(6,9)}/${bc.slice(9)}/front.400.jpg`
     : '';
-  return `<img src="${cdn}" loading="lazy"
-    onerror="if(this.dataset.t==='1'){this.style.display='none'}else{this.dataset.t='1';this.src='${off}'}"
+  return `<img src="${cdn}" loading="lazy" data-off="${off}"
+    onerror="if(this.dataset.t==='1'||!this.dataset.off){this.style.display='none'}else{this.dataset.t='1';this.src=this.dataset.off}"
     style="width:${size}px;height:${size}px;object-fit:contain;border-radius:6px;flex-shrink:0">`;
 }
 
