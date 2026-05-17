@@ -470,6 +470,7 @@ const CAT = {
   cleaning: {i:'🧹',l:'ניקיון הבית'},
   baby:     {i:'👶',l:'תינוקות'},
   pets:     {i:'🐾',l:'חיות מחמד'},
+  household:{i:'🏠',l:'כלי בית'},
   other:    {i:'📦',l:'אחר'},
 };
 const SC = { sheli_shabit:'#1d4ed8', express_histadrut:'#15803d', citymarket_givataim:'#b45309' };
@@ -713,7 +714,8 @@ function render() {
 function mkCard(p,i,isList) {
   const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3;
   const pp0 = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
-  const effP0 = pp0?.unitPrice ?? p.price;
+  // Prefer scraper-computed effectivePrice (handles NבX patterns correctly)
+  const effP0 = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
   const effVsAvg = p.vsAvgPct!=null ? Math.round((effP0/p.price - 1 + p.vsAvgPct/100) * 100) : p.vsAvgPct;
   const isCheap = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
@@ -727,13 +729,7 @@ function mkCard(p,i,isList) {
     isCheap ? '<span class="tag tag-cheap">💰 זול</span>' : '',
   ].filter(Boolean).join('');
 
-  const p100 = p.pricePer100 ? `
-    <div class="norm-price">
-      <div>
-        <div class="norm-val">₪${p.pricePer100} <span class="norm-lbl">ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}</span></div>
-      </div>
-      ${p.vsAvgPct!=null ? `<span class="norm-vs ${p.vsAvgPct<0?'vs-low':'vs-high'}">${p.vsAvgPct<0?'↓':'↑'}${Math.abs(p.vsAvgPct)}%</span>` : ''}
-    </div>` : '';
+
 
   // השוואת סניפים — כולל סניפים שאין בהם
   const promoData = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
@@ -776,13 +772,13 @@ function mkCard(p,i,isList) {
         ${storeComp}
       </div>
       <div style="text-align:left;flex-shrink:0">
-        ${promoData ? `
-        <div style="font-size:11px;color:var(--text2)">מחיר רגיל</div>
-        <div style="font-size:15px;color:var(--text2);font-weight:500;text-decoration:line-through">₪${p.price.toFixed(2)}</div>
-        <div style="font-size:11px;color:var(--green);font-weight:500;margin-top:2px">במבצע</div>
-        <div class="price-main" style="color:var(--green)">₪${promoData.unitPrice.toFixed(2)}</div>
-        ` : `<div class="price-main">₪${p.price.toFixed(2)}</div>`}
-        <div class="price-unit">${p.unit||''}</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <div class="price-main" style="${promoData?'color:var(--green)':''}">₪${promoData ? (p.effectivePrice ?? promoData.unitPrice).toFixed(2) : p.price.toFixed(2)}</div>
+          ${promoData ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
+            p.prevPrice ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
+        </div>
+        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}</div>` :
+          p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
         <div class="card-actions" style="margin-top:6px">
           <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
           <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
@@ -795,30 +791,20 @@ function mkCard(p,i,isList) {
       <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col};font-size:0.7rem;font-weight:600">${p._sname}</span></div>
       <div class="card-name">${p.name}</div>
       <div class="card-brand">${p.brand||''}</div>
-      ${promoData ? `
-      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:6px;margin-top:8px">
-        <div style="flex:1">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:1px">מחיר רגיל</div>
-          <div style="font-size:18px;font-weight:500;color:var(--text2)">₪${p.price.toFixed(2)}</div>
-        </div>
-        <div style="width:0.5px;background:var(--border);align-self:stretch"></div>
-        <div style="flex:1">
-          <div style="font-size:11px;color:var(--green);font-weight:500;margin-bottom:1px">במבצע ליחידה</div>
-          <div style="font-size:26px;font-weight:700;color:var(--green);line-height:1">₪${promoData.unitPrice.toFixed(2)}</div>
-        </div>
-      </div>
-      <div class="price-unit" style="margin-bottom:6px">${p.unit||''}</div>
-      <div style="background:#fffbeb;border-right:3px solid #f59e0b;padding:6px 10px;border-radius:0 6px 6px 0;font-size:12px;color:#92400e;font-weight:500;margin-bottom:8px">
-        🔥 ${p.promo}
-      </div>` : `
       <div class="card-price">
-        <div class="price-main">₪${p.price.toFixed(2)}</div>
-        ${p.prevPrice?`<div class="price-prev">₪${p.prevPrice}</div>`:''}
-        <div class="price-unit">${p.unit||''}</div>
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <div class="price-main" style="${promoData?'color:var(--green)':''}">
+            ₪${promoData ? (p.effectivePrice ?? promoData.unitPrice).toFixed(2) : p.price.toFixed(2)}
+          </div>
+          ${promoData ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
+            p.prevPrice ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
+        </div>
+        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null?' · <span style="color:'+(p.vsAvgPct<0?'var(--green)':'var(--red)')+'">'+(p.vsAvgPct<0?'↓':'↑')+Math.abs(p.vsAvgPct)+'%</span>':''}</div>` :
+          p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
+        ${promoData ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🔥 ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` :
+          hasDeal ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🏷️ ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` : ''}
       </div>
-      ${hasDeal?`<div class="tag tag-deal" style="margin-bottom:8px;display:inline-block">🏷️ ${p.promo}</div>`:''}`}
       ${tags ? `<div class="card-tags">${tags}</div>` : ''}
-      ${p100}
       ${storeComp}
       ${footer}
     </div>`;
@@ -982,21 +968,21 @@ function openProduct(bc,sid) {
         <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שפל כל הזמנים</div>
           <div style="font-size:1.1rem;font-weight:700;color:var(--green)">&#x20AA;${mainP.allTimeLow.toFixed(2)}</div>
-          ${mainP.price === mainP.allTimeLow ? '<div style="font-size:0.65rem;color:var(--green)">✓ עכשיו!</div>' : ''}
+          ${(mainP.effectivePrice??mainP.promoPrice??mainP.price) <= mainP.allTimeLow ? '<div style="font-size:0.65rem;color:var(--green)">✓ עכשיו!</div>' : ''}
         </div>
         <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">ממוצע</div>
           <div style="font-size:1.1rem;font-weight:700">&#x20AA;${mainP.histAvg.toFixed(2)}</div>
-          ${mainP.price < mainP.histAvg
+          ${(mainP.effectivePrice??mainP.promoPrice??mainP.price) < mainP.histAvg
             ? '<div style="font-size:0.65rem;color:var(--green)">↓' + Math.round((mainP.histAvg-mainP.price)/mainP.histAvg*100) + '% מתחת</div>'
-            : mainP.price > mainP.histAvg
+            : (mainP.effectivePrice??mainP.promoPrice??mainP.price) > mainP.histAvg
             ? '<div style="font-size:0.65rem;color:#ef4444">↑' + Math.round((mainP.price-mainP.histAvg)/mainP.histAvg*100) + '% מעל</div>'
             : ''}
         </div>
         <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שיא כל הזמנים</div>
           <div style="font-size:1.1rem;font-weight:700;color:#ef4444">&#x20AA;${mainP.allTimeHigh.toFixed(2)}</div>
-          ${mainP.price === mainP.allTimeHigh ? '<div style="font-size:0.65rem;color:#ef4444">⚠️ עכשיו!</div>' : ''}
+          ${(mainP.effectivePrice??mainP.promoPrice??mainP.price) >= mainP.allTimeHigh ? '<div style="font-size:0.65rem;color:#ef4444">⚠️ עכשיו!</div>' : ''}
         </div>
       </div>
       ${buildSparkline(mainP.priceHistory, mainP.allTimeLow, mainP.allTimeHigh)}
