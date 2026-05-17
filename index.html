@@ -799,7 +799,7 @@ function mkCard(p,i,isList) {
           ${promoData ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
             p.prevPrice ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
         </div>
-        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null?' · <span style="color:'+(p.vsAvgPct<0?'var(--green)':'var(--red)')+'">'+(p.vsAvgPct<0?'↓':'↑')+Math.abs(p.vsAvgPct)+'%</span>':''}</div>` :
+        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null ? (p.vsAvgPct<0 ? ` <span style="color:var(--green)">${p.vsAvgPct}%</span>` : ` <span style="color:var(--red)">${p.vsAvgPct}%</span>`) : ''}</div>` :
           p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
         ${promoData ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🔥 ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` :
           hasDeal ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🏷️ ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` : ''}
