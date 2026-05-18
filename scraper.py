@@ -17,7 +17,7 @@ STORES = [
     {'id':'sheli_shabit','name':'שלי גבעתיים שביט','short':'שלי שביט','source':'shufersal','store_id':287},
     {'id':'express_histadrut','name':'שופרסל אקספרס ההסתדרות','short':'אקספרס','source':'shufersal','store_id':599},
     {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_branch':'079'},
-    {'id':'goodpharm_givataim','name':'גוד פארם גבעתיים','short':'גוד פארם','source':'goodpharm','store_branch':'075'},
+    {'id':'goodpharm_givataim','name':'גוד פארם גבעתיים','short':'גוד פארם','source':'goodpharm','store_branch':'970'},
 ]
 
 TODAY   = datetime.now().strftime('%Y-%m-%d')
@@ -92,6 +92,8 @@ def download_content(url):
     return content.decode('utf-8', errors='replace')
 
 def safe_parse_xml(text):
+    if isinstance(text, bytes):
+        text = text.decode('utf-8', errors='replace')
     parts = [p.strip() for p in re.split(r'(?=<\?xml)', text.strip()) if p.strip()]
     roots = []
     for part in parts:
