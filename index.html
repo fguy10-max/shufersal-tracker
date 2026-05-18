@@ -265,7 +265,7 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 .scanner-close { background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; }
 .scanner-video { width:100%; height:100%; object-fit:cover; }
 .scanner-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-.scanner-frame { width:240px; height:160px; border:2px solid #4ade80; border-radius:12px; box-shadow:0 0 0 9999px rgba(0,0,0,0.5); position:relative; }
+.scanner-frame { width:240px; height:160px; border:2px solid #4ade80; border-radius:12px; box-shadow:0 0 0 999px rgba(0,0,0,0.5); position:relative; }
 .scanner-frame::before, .scanner-frame::after { content:''; position:absolute; width:24px; height:24px; border-color:#4ade80; border-style:solid; }
 .scanner-frame::before { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 8px 0 0; }
 .scanner-frame::after { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 8px; }
@@ -477,10 +477,18 @@ const SC = { sheli_shabit:'#1d4ed8', express_histadrut:'#15803d', citymarket_giv
 const DEFAULT_HIDDEN = ['alcohol','baby','pets','other'];
 
 let DATA, STORES=[], allProducts=[], catMap={}, compMap={};
+
+// FIX 2: Safely wrap localStorage fetching to prevent blank-screen crashes if local data was corrupted
+let watching = new Set();
+try { watching = new Set(JSON.parse(localStorage.getItem('w') || '[]')); } catch(e) { console.error("Corrupt watch list", e); }
+
+let cart = [];
+try { cart = JSON.parse(localStorage.getItem('c') || '[]'); } catch(e) { console.error("Corrupt cart list", e); }
+
+let hiddenCats = new Set(DEFAULT_HIDDEN);
+try { hiddenCats = new Set(JSON.parse(localStorage.getItem('h') || JSON.stringify(DEFAULT_HIDDEN))); } catch(e) { console.error("Corrupt hidden cats", e); }
+
 let curCat='all', curFilter='all', curView='grid';
-let watching = new Set(JSON.parse(localStorage.getItem('w')||'[]'));
-let cart = JSON.parse(localStorage.getItem('c')||'[]');
-let hiddenCats = new Set(JSON.parse(localStorage.getItem('h')||JSON.stringify(DEFAULT_HIDDEN)));
 
 const prog = (p,m) => { document.getElementById('prog').style.width=p+'%'; document.getElementById('splash-msg').textContent=m; };
 
@@ -492,7 +500,12 @@ async function boot() {
     prog(55,'מנתח...');
     DATA = await r.json();
   } catch(e) {
-    document.getElementById('splash-msg').textContent='❌ '+e.message;
+    // FIX 4: Explicit notification if the user's AdBlocker blocked the 'shufersal-tracker' URL.
+    if (e.message === "Failed to fetch") {
+      document.getElementById('splash-msg').innerHTML='❌ שגיאת התחברות.<br>חוסם פרסומות (AdBlocker) עשוי לחסום את הגישה. אנא כבו אותו ורעננו.';
+    } else {
+      document.getElementById('splash-msg').textContent='❌ '+e.message;
+    }
     return;
   }
   prog(85,'בונה...');
@@ -533,7 +546,6 @@ function init() {
   document.getElementById('s-promos').textContent = promos;
   document.getElementById('s-compare').textContent = shared.toLocaleString();
   document.getElementById('s-watch').textContent = watching.size;
-  // store tags
   // store tags removed
   buildSidebar();
   buildStoreFilter();
@@ -721,16 +733,18 @@ function mkCard(p,i,isList) {
   const isCheapVsAvg = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
   const isCheapVsStores = hasCompare && p._prices && effP0 === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1;
   const isCheap = isCheapVsAvg || isCheapVsStores;
-  const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
+  const isW=watching.has(p.barcode), inC=cart.some(c=> c && c.barcode===p.barcode);
   const delay=`animation-delay:${Math.min(i,15)*0.03}s`;
   const col=SC[p._sid]||'#999';
+
+  // FIX 1: Explicitly escape double quotes in the onclick handlers so that a " in the product name doesn't break the HTML attribute parsing.
+  const escapedName = p.name.replace(/'/g,"\\'").replace(/"/g,"&quot;");
 
   const tags = [
     hasDrop ? '<span class="tag tag-drop">📉 ירד</span>' : '',
     hasDeal ? '<span class="tag tag-deal">🔥 מבצע</span>' : '',
     isCheap ? '<span class="tag tag-cheap">💰 זול</span>' : '',
   ].filter(Boolean).join('');
-
 
 
   // השוואת סניפים — כולל סניפים שאין בהם
@@ -760,7 +774,7 @@ function mkCard(p,i,isList) {
       <span class="card-date">${p.updatedAt?.substring(0,10)||''}</span>
       <div class="card-actions">
         <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
-        <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}${inC?' ':' '}רשימה</button>
+        <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}${inC?' ':' '}רשימה</button>
       </div>
     </div>`;
 
@@ -783,7 +797,7 @@ function mkCard(p,i,isList) {
           p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
         <div class="card-actions" style="margin-top:6px">
           <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
-          <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
+          <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
         </div>
       </div>
     </div>`;
@@ -801,7 +815,7 @@ function mkCard(p,i,isList) {
           ${promoData ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
             p.prevPrice ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
         </div>
-        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null ? (p.vsAvgPct<0 ? ` <span style="color:var(--green)">${p.vsAvgPct}%</span>` : ` <span style="color:var(--red)">${p.vsAvgPct}%</span>`) : ''}</div>` :
+        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null ? (' <span style="color:'+(p.vsAvgPct<0?'var(--green)':'var(--red)')+'">'+p.vsAvgPct+'%</span>') : ''}</div>` :
           p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
         ${promoData ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🔥 ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` :
           hasDeal ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🏷️ ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` : ''}
@@ -821,7 +835,7 @@ function tw(bc,btn) {
 }
 
 function tc(bc,name,price,sid,btn) {
-  const idx=cart.findIndex(c=>c.barcode===bc);
+  const idx=cart.findIndex(c=> c && c.barcode===bc);
   if(idx>=0){cart.splice(idx,1);btn.textContent='+ רשימה';btn.classList.remove('on-cart');}
   else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓ רשימה';btn.classList.add('on-cart');}
   saveCart();
@@ -860,13 +874,14 @@ function renderCart() {
   const storeTotals={}, storeFound={}, storeMissing={};
   for(const s of STORES){storeTotals[s.id]=0;storeFound[s.id]=0;storeMissing[s.id]=0;}
   for(const item of cart) {
+    if (!item) continue;
     const prices=compMap[item.barcode]?.prices||{[item.storeId]:item.price};
     for(const s of STORES) {
       if(prices[s.id]!==undefined){storeTotals[s.id]+=prices[s.id]*(item.qty||1);storeFound[s.id]+=(item.qty||1);}
       else storeMissing[s.id]+=(item.qty||1);
     }
   }
-  const myTotal=cart.reduce((s,c)=>s+c.price*(c.qty||1),0);
+  const myTotal=cart.reduce((s,c)=>s+ (c ? c.price*(c.qty||1) : 0),0);
   const validStores=STORES.filter(s=>storeFound[s.id]>=totalQty/2);
   const bestStore=validStores.length?validStores.reduce((b,s)=>storeTotals[s.id]<storeTotals[b.id]?s:b,validStores[0]):null;
 
@@ -917,7 +932,9 @@ function openProduct(bc,sid) {
   if(!mainP)return;
   const prices=compMap[bc]?.prices||{[sid]:mainP.price};
   const vals=Object.values(prices), minP=Math.min(...vals), maxP=Math.max(...vals);
-  const isW=watching.has(bc), inC=cart.some(c=>c.barcode===bc);
+  const isW=watching.has(bc), inC=cart.some(c=> c && c.barcode===bc);
+  
+  const escapedName = mainP.name.replace(/'/g,"\\'").replace(/"/g,"&quot;");
 
   mc.innerHTML=`
     <div class="modal-drag"></div>
@@ -935,7 +952,7 @@ function openProduct(bc,sid) {
             const isBest=sp!==undefined&&sp===minP;
             return `<tr${isBest?' class="best"':''}>
               <td><div class="tbl-store"><div class="store-dot" style="background:${SC[s.id]}"></div>${s.short}</div></td>
-              <td class="tbl-price ${isBest?'tbl-best':''}">${sp!==undefined?'₪'+sp:'—'}</td>
+              <td class="tbl-price ${isBest?'tbl-best':''}">${sp!==undefined?'₪'+sp.toFixed(2):'—'}</td>
               <td style="font-size:0.72rem;color:var(--text3)">${sp===undefined?'לא נמצא':isBest&&minP!==maxP?'✓ הכי זול':sp===maxP&&minP!==maxP?'+₪'+(sp-minP).toFixed(1):'—'}</td>
             </tr>`;
           }).join('')}
@@ -997,7 +1014,7 @@ function openProduct(bc,sid) {
       <button id="m-watch" onclick="twModal('${bc}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${isW?'#7c3aed':' var(--border)'};background:${isW?'#f5f3ff':'var(--bg)'};color:${isW?'#7c3aed':'var(--text2)'}">
         ${isW?'⭐ עוקב':'☆ עקוב'}
       </button>
-      <button id="m-cart" onclick="tcModal('${bc}','${mainP.name.replace(/'/g,"\\'")}',${mainP.price},'${sid}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${inC?'var(--green)':'var(--border)'};background:${inC?'var(--green-light)':'var(--bg)'};color:${inC?'var(--green)':'var(--text2)'}">
+      <button id="m-cart" onclick="tcModal('${bc}','${escapedName}',${mainP.price},'${sid}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${inC?'var(--green)':'var(--border)'};background:${inC?'var(--green-light)':'var(--bg)'};color:${inC?'var(--green)':'var(--text2)'}">
         ${inC?'✓ ברשימה':'+ הוסף'}
       </button>
     </div>`;
@@ -1017,7 +1034,7 @@ function twModal(bc){
   btn.style.borderColor=on?'#7c3aed':'var(--border)';
 }
 function tcModal(bc,name,price,sid){
-  const idx=cart.findIndex(c=>c.barcode===bc);
+  const idx=cart.findIndex(c=> c && c.barcode===bc);
   const btn=document.getElementById('m-cart');
   if(idx>=0){cart.splice(idx,1);btn.textContent='+ הוסף';btn.style.background='var(--bg)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border)';}
   else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓ ברשימה';btn.style.background='var(--green-light)';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
