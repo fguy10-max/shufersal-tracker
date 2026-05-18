@@ -717,7 +717,10 @@ function mkCard(p,i,isList) {
   // Prefer scraper-computed effectivePrice (handles NבX patterns correctly)
   const effP0 = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
   const effVsAvg = p.vsAvgPct!=null ? Math.round((effP0/p.price - 1 + p.vsAvgPct/100) * 100) : p.vsAvgPct;
-  const isCheap = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
+  const effPrice = p.effectivePrice ?? effP0;
+  const isCheapVsAvg = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
+  const isCheapVsStores = hasCompare && p._prices && effPrice === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1;
+  const isCheap = isCheapVsAvg || isCheapVsStores;
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
   const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
   const delay=`animation-delay:${Math.min(i,15)*0.03}s`;
@@ -746,7 +749,7 @@ function mkCard(p,i,isList) {
           <div class="sc-dot" style="background:${SC[s.id]}"></div>
           <div class="sc-name">${s.short}</div>
           ${sp!==undefined
-            ? `<div class="sc-price ${isBest?'sc-best':isWorst?'sc-worst':''}">₪${sp}</div>
+            ? `<div class="sc-price ${isBest?'sc-best':isWorst?'sc-worst':''}">₪${sp.toFixed(2)}</div>
                ${isBest&&minP!==maxP?`<div class="sc-diff">−₪${(maxP-sp).toFixed(1)}</div>`:''}`
             : `<div class="sc-price sc-na">—</div>`}
         </div>`;
