@@ -17,6 +17,7 @@ STORES = [
     {'id':'sheli_shabit','name':'שלי גבעתיים שביט','short':'שלי שביט','source':'shufersal','store_id':287},
     {'id':'express_histadrut','name':'שופרסל אקספרס ההסתדרות','short':'אקספרס','source':'shufersal','store_id':599},
     {'id':'citymarket_givataim','name':'סיטי מרקט גבעתיים','short':'סיטי מרקט','source':'citymarket','store_branch':'079'},
+    {'id':'goodpharm_givataim','name':'גוד פארם גבעתיים','short':'גוד פארם','source':'goodpharm','store_branch':'075'},
 ]
 
 TODAY   = datetime.now().strftime('%Y-%m-%d')
@@ -444,6 +445,135 @@ def scrape_citymarket(branch):
             print(f'  {cnt} מבצעים')
         except Exception as e:
             print(f'  ⚠️ מבצעים: {e}')
+
+    return products, {}
+
+
+def scrape_goodpharm(branch):
+    """
+    גוד פארם — Bina Projects API (same pattern as CityMarket).
+    Branch 075 = גבעתיים תפוצות ישראל.
+    """
+    import json as _json
+
+    GOODPHARM_API  = 'https://goodpharm.binaprojects.com/MainIO_Hok.aspx'
+    GOODPHARM_BASE = 'https://goodpharm.binaprojects.com'
+
+    def gp_download(filename):
+        """Download via filename — same as bina_download_raw but different base URL."""
+        import zipfile as _zip, io as _io
+        url = f'{GOODPHARM_BASE}/download/{filename}'
+        print(f'    {filename}')
+        r = session.get(url, timeout=120)
+        r.raise_for_status()
+        raw = r.content
+        if raw[:2] == b'PK':
+            with _zip.ZipFile(_io.BytesIO(raw)) as z:
+                return z.read(z.namelist()[0])
+        import gzip as _gz
+        with _gz.open(_io.BytesIO(raw)) as gz:
+            return gz.read()
+
+    def g(item, *tags):
+        for tag in tags:
+            el = item.find(tag)
+            if el is not None and el.text:
+                return el.text.strip()
+        return ''
+
+    products = []
+
+    # ── Get file list ────────────────────────────────────────────
+    print(f'  מחפש קבצים לסניף {branch}...')
+    price_files = []
+    promo_files = []
+
+    for file_type, param in [('מחירים', 2), ('מבצעים', 5)]:
+        r = session.get(GOODPHARM_API, params={
+            'WFileType': param, 'WStore': 0, 'WBranch': branch
+        }, timeout=30)
+        r.raise_for_status()
+        files = _json.loads(r.text)
+        if param == 2:
+            price_files = sorted(files, key=lambda x: x.get('FileNm',''))
+        else:
+            promo_files = sorted(files, key=lambda x: x.get('FileNm',''), reverse=True)
+
+    # ── Download latest PriceFull ────────────────────────────────
+    try:
+        r = session.get(GOODPHARM_API, params={
+            'WFileType': 4, 'WStore': 0, 'WBranch': branch
+        }, timeout=30)
+        full_files = _json.loads(r.text)
+        if full_files:
+            price_files = sorted(full_files, key=lambda x: x.get('FileNm',''), reverse=True)[:1]
+            print(f'  PriceFull: {price_files[0].get("FileNm","")}')
+    except Exception:
+        pass
+
+    # ── Parse price files ────────────────────────────────────────
+    seen = set()
+    for f in price_files:
+        filename = f.get('FileNm','')
+        if not filename:
+            continue
+        try:
+            xml_bytes = gp_download(filename)
+            root = safe_parse_xml(xml_bytes)
+            if root is None:
+                continue
+            for item in root.iter('Item'):
+                barcode = g(item, 'ItemCode')
+                # Skip non-barcode items (internal codes)
+                if not barcode.isdigit() or len(barcode) < 8:
+                    continue
+                if barcode in seen:
+                    continue
+                seen.add(barcode)
+
+                name  = g(item, 'ItemNm', 'ManufacturerItemDescription')
+                price = float(g(item, 'ItemPrice') or 0)
+                unit  = g(item, 'UnitOfMeasure')
+                brand = g(item, 'ManufacturerName')
+                updated = g(item, 'PriceUpdateDate')
+
+                if not name or not price:
+                    continue
+
+                qty, utype = parse_quantity(name) or parse_quantity(unit)
+                products.append({
+                    'barcode': barcode, 'name': name, 'price': price,
+                    'unit': unit, 'unitType': utype, 'qty': qty,
+                    'pricePer100': round(price/qty*100, 2) if qty else None,
+                    'brand': brand, 'updatedAt': updated,
+                    'promo': None, 'promoPrice': None,
+                })
+        except Exception as e:
+            print(f'    ⚠️ {e}')
+
+    print(f'  ✅ {len(products):,} מוצרים ייחודיים')
+
+    # ── Parse promos ─────────────────────────────────────────────
+    if promo_files:
+        pd = {}
+        try:
+            filename = promo_files[0].get('FileNm','')
+            if filename:
+                xml_bytes = gp_download(filename)
+                root = safe_parse_xml(xml_bytes)
+                if root:
+                    pd = extract_promos([root])
+        except Exception as e:
+            print(f'  ⚠️ מבצעים: {e}')
+
+        cnt = 0
+        for p in products:
+            if p['barcode'] in pd:
+                p.update(pd[p['barcode']])
+                cnt += 1
+            eff = parse_promo_price(p.get('promo') or '', p['price'])
+            p['effectivePrice'] = round(eff, 2) if eff else (p.get('promoPrice') or p['price'])
+        print(f'  {cnt} מבצעים')
 
     return products, {}
 
@@ -989,8 +1119,12 @@ def main():
         try:
             if store['source'] == 'shufersal':
                 products, _ = scrape_shufersal(store['store_id'], service, folder_id)
-            else:
+            elif store['source'] == 'citymarket':
                 products, _ = scrape_citymarket(store['store_branch'])
+            elif store['source'] == 'goodpharm':
+                products, _ = scrape_goodpharm(store['store_branch'])
+            else:
+                raise ValueError(f"Unknown source: {store['source']}")
             print(f'  {len(products):,} מוצרים')
             new, upd = update_history(history, store['id'], products)
             print(f'  {new} חדשים | {upd} עודכנו')
