@@ -749,6 +749,11 @@ function mkCard(p,i,isList) {
 
   // השוואת סניפים — כולל סניפים שאין בהם
   const promoData = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
+  const currentPrice = promoData ? (p.effectivePrice ?? promoData.unitPrice) : p.price;
+  
+  // FIX: ONLY cross out older prices if they are demonstrably larger than the current price shown.
+  const showCrossedRegular = promoData && (p.price > currentPrice);
+  const showCrossedPrev = !showCrossedRegular && (p.prevPrice && p.prevPrice > p.price);
 
   const storeComp = hasCompare ? `
     <div class="store-compare">
@@ -789,9 +794,9 @@ function mkCard(p,i,isList) {
       </div>
       <div style="text-align:left;flex-shrink:0">
         <div style="display:flex;align-items:baseline;gap:6px">
-          <div class="price-main" style="${promoData?'color:var(--green)':''}">₪${promoData ? (p.effectivePrice ?? promoData.unitPrice).toFixed(2) : p.price.toFixed(2)}</div>
-          ${promoData ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
-            p.prevPrice ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
+          <div class="price-main" style="${promoData?'color:var(--green)':''}">₪${currentPrice.toFixed(2)}</div>
+          ${showCrossedRegular ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
+            showCrossedPrev ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
         </div>
         ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}</div>` :
           p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
@@ -810,10 +815,10 @@ function mkCard(p,i,isList) {
       <div class="card-price">
         <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
           <div class="price-main" style="${promoData?'color:var(--green)':''}">
-            ₪${promoData ? (p.effectivePrice ?? promoData.unitPrice).toFixed(2) : p.price.toFixed(2)}
+            ₪${currentPrice.toFixed(2)}
           </div>
-          ${promoData ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
-            p.prevPrice ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
+          ${showCrossedRegular ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
+            showCrossedPrev ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
         </div>
         ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null ? (' <span style="color:'+(p.vsAvgPct<0?'var(--green)':'var(--red)')+'">'+p.vsAvgPct+'%</span>') : ''}</div>` :
           p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
@@ -970,7 +975,7 @@ function openProduct(bc,sid) {
       </div>
     </div>`:''}
 
-    ${mainP.prevPrice && mainP.changePct && Math.abs(mainP.changePct)>=3?`
+    ${mainP.prevPrice && mainP.changePct && Math.abs(mainP.changePct)>=3 && mainP.prevPrice !== mainP.price ?`
     <div class="modal-sec">
       <div class="modal-sec-label">שינוי מחיר</div>
       <div style="display:flex;align-items:center;gap:8px">
