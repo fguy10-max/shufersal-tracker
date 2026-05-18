@@ -521,10 +521,11 @@ def scrape_goodpharm(branch):
             continue
         try:
             xml_bytes = gp_download(filename)
-            root = safe_parse_xml(xml_bytes)
-            if root is None:
+            roots = safe_parse_xml(xml_bytes)
+            if not roots:
                 continue
-            for item in root.iter('Item'):
+            for root in roots:
+              for item in root.iter('Item'):
                 barcode = g(item, 'ItemCode')
                 # Skip non-barcode items (internal codes)
                 if not barcode.isdigit() or len(barcode) < 8:
@@ -562,9 +563,9 @@ def scrape_goodpharm(branch):
             filename = promo_files[0].get('FileNm','')
             if filename:
                 xml_bytes = gp_download(filename)
-                root = safe_parse_xml(xml_bytes)
-                if root:
-                    pd = extract_promos([root])
+                roots = safe_parse_xml(xml_bytes)
+                if roots:
+                    pd = extract_promos(roots)
         except Exception as e:
             print(f'  ⚠️ מבצעים: {e}')
 
