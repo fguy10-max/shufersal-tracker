@@ -920,6 +920,34 @@ def avg_similar(bc, sh):
     return round(sum(vals)/len(vals),2), len(vals)
 
 # Main
+def update_history(history, store_id, products):
+    """Update price history for a store. Returns (new, updated) counts."""
+    if store_id not in history:
+        history[store_id] = {}
+    sh = history[store_id]
+    new = updated = 0
+    for p in products:
+        bc = p['barcode']
+        qty, utype = parse_quantity(p['name'])
+        p100 = round(p['price'] / qty * 100, 2) if qty else None
+        if bc not in sh:
+            sh[bc] = {
+                'name': p['name'], 'price': p['price'],
+                'unitType': utype, 'qty': qty, 'pricePer100': p100,
+                'prices': {TODAY: p['price']}
+            }
+            new += 1
+        else:
+            sh[bc]['prices'][TODAY] = p['price']
+            sh[bc]['price'] = p['price']
+            if p100 and (not sh[bc].get('pricePer100') or sh[bc].get('price',0) > 0):
+                sh[bc]['pricePer100'] = p100
+            sh[bc]['unitType'] = utype
+            sh[bc]['qty'] = qty
+            updated += 1
+    return new, updated
+
+
 def main():
     print(f'מחירוסקופ רב-סניפי — {TODAY}')
     service = get_drive_service()
