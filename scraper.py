@@ -1061,8 +1061,12 @@ def update_history(history, store_id, products):
     new = updated = 0
     for p in products:
         bc = p['barcode']
-        qty, utype = parse_quantity(p['name'])
-        p100 = round(p['price'] / qty * 100, 2) if qty else None
+        # Use qty already computed by scraper (more accurate than re-parsing)
+        qty  = p.get('qty')
+        utype = p.get('unitType')
+        p100 = p.get('pricePer100')
+        if not p100 and qty:
+            p100 = round(p['price'] / qty * 100, 2)
         if bc not in sh:
             sh[bc] = {
                 'name': p['name'], 'price': p['price'],
@@ -1180,7 +1184,7 @@ def main():
             if not bc: continue
             if bc not in barcode_map:
                 barcode_map[bc] = {'name':p['name'],'brand':p['brand'],'unit':p['unit'],'prices':{}}
-            barcode_map[bc]['prices'][store_id] = p['price']
+            barcode_map[bc]['prices'][store_id] = p.get('effectivePrice') or p['price']
     multi_store = {bc:d for bc,d in barcode_map.items() if len(d['prices'])>1}
     print(f'\n{len(multi_store):,} מוצרים משותפים')
 
