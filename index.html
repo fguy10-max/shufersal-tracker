@@ -717,9 +717,8 @@ function mkCard(p,i,isList) {
   // Prefer scraper-computed effectivePrice (handles NבX patterns correctly)
   const effP0 = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
   const effVsAvg = p.vsAvgPct!=null ? Math.round((effP0/p.price - 1 + p.vsAvgPct/100) * 100) : p.vsAvgPct;
-  const effPrice = p.effectivePrice ?? effP0;
   const isCheapVsAvg = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
-  const isCheapVsStores = hasCompare && p._prices && effPrice === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1;
+  const isCheapVsStores = hasCompare && p._prices && effP0 === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1;
   const isCheap = isCheapVsAvg || isCheapVsStores;
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
   const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
