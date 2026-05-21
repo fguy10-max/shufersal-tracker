@@ -405,4 +405,495 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
         <span class="search-icon">🔍</span>
         <input type="text" id="search" placeholder="חיפוש או ברקוד..." oninput="render()">
       </div>
-      <button class="scan-btn" id="scan-btn" onclick="openScanner()" title="סרוק ברקוד
+      <button class="scan-btn" id="scan-btn" onclick="openScanner()" title="סרוק ברקוד">📷</button>
+      <select class="sort-select" id="sort" onchange="render()">
+        <option value="name">א–ב</option>
+        <option value="price_asc">מחיר ↑</option>
+        <option value="price_desc">מחיר ↓</option>
+        <option value="cheap">זול מממוצע</option>
+        <option value="diff">הפרש גדול</option>
+        <option value="drop">ירידה</option>
+        <option value="attractive">🌟 הכי אטרקטיבי</option>
+      </select>
+      <div class="view-toggle">
+        <button class="view-btn on" id="vbtn-grid" onclick="setView('grid')">⊞</button>
+        <button class="view-btn" id="vbtn-list" onclick="setView('list')">☰</button>
+      </div>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat-n" id="s-total" style="display:none">—</div>
+      <div class="stat-n" id="s-promos" style="display:none">—</div>
+      <div class="stat-n" id="s-compare" style="display:none">—</div>
+      <div class="stat-item"><div class="stat-n" id="s-total-disp">—</div><div class="stat-l">מוצרים</div></div>
+      <div class="stat-item"><div class="stat-n" id="s-promos-disp">—</div><div class="stat-l">מבצעים</div></div>
+      <div class="stat-item"><div class="stat-n" id="s-compare-disp">—</div><div class="stat-l">להשוואה</div></div>
+      <div class="stat-item"><div class="stat-n" id="s-watch">—</div><div class="stat-l">מעקב</div></div>
+    </div>
+
+    <div class="store-filter" id="store-filter"></div>
+
+    <div class="results-meta" id="results-meta"></div>
+
+    <div id="grid-area"></div>
+    <div class="empty-state" id="empty" style="display:none">
+      <div class="ei">🔍</div><p>לא נמצאו תוצאות</p>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-bg" id="cart-bg" onclick="closeCart()"></div>
+<div class="drawer" id="cart-drawer">
+  <div class="drawer-head">
+    <h2>🛒 רשימת קניות</h2>
+    <button class="drawer-close" onclick="closeCart()">✕</button>
+  </div>
+  <div class="drawer-body" id="cart-body"></div>
+  <div class="drawer-foot" id="cart-foot"></div>
+</div>
+
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content">
+    <div class="modal-drag"></div>
+  </div>
+</div>
+
+<div class="drawer-bg" id="settings-bg" onclick="closeSettings()"></div>
+<div class="settings-drawer" id="settings-drawer">
+  <div class="drawer-head">
+    <h2>הגדרות</h2>
+    <button class="drawer-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="drawer-body" id="settings-body"></div>
+  <div class="drawer-foot">
+    <button onclick="applySettings()" style="width:100%;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:none;background:var(--text);color:#fff;">החל</button>
+  </div>
+</div>
+
+<div class="scanner-modal" id="scanner-modal">
+  <div class="scanner-head">
+    <div class="scanner-title">📷 סרוק ברקוד</div>
+    <button class="scanner-close" onclick="closeScanner()">✕</button>
+  </div>
+  <video class="scanner-video" id="scanner-video" playsinline autoplay muted></video>
+  <div class="scanner-overlay">
+    <div class="scanner-frame">
+      <div class="scanner-line"></div>
+    </div>
+  </div>
+  <div class="scanner-hint">כוון את הברקוד לתוך המסגרת</div>
+  <div class="scanner-result" id="scanner-result"></div>
+</div>
+
+<div id="chat-overlay" onclick="if(event.target===this)toggleChat()" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.3)"></div>
+<div id="chat-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;height:72vh;max-height:600px;background:var(--bg);border-radius:20px 20px 0 0;box-shadow:0 -4px 32px rgba(0,0,0,0.15);z-index:901;flex-direction:column;font-family:inherit;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:1.3rem">🤖</span>
+      <div>
+        <div style="font-weight:700;font-size:0.95rem">עוזר קניות</div>
+        <div style="font-size:0.7rem;color:var(--text3)">שאל אותי על מחירים, מבצעים, והמלצות</div>
+      </div>
+    </div>
+    <button onclick="toggleChat()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text3);padding:4px">✕</button>
+  </div>
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+    <div class="chat-msg chat-assistant">
+      <div class="chat-bubble">
+        שלום! אני עוזר הקניות של מחירוסקופ 🛒<br>
+        אשמח לעזור לך למצוא את העסקאות הטובות ביותר.<br><br>
+        <strong>לדוגמה:</strong><br>
+        • "איזו מוצרלה הכי משתלמת?"<br>
+        • "מה במבצע עכשיו בשלי שביט?"<br>
+        • "תמצא לי פסטה זולה"<br>
+        • "השווה גבינות צהובות בין הסניפים"
+      </div>
+    </div>
+  </div>
+  <div id="chat-suggestions" style="padding:6px 16px;display:flex;gap:6px;overflow-x:auto;flex-shrink:0;scrollbar-width:none">
+    <button class="chat-chip" onclick="sendChatMsg('איזו מוצרלה הכי משתלמת?')">🧀 מוצרלה</button>
+    <button class="chat-chip" onclick="sendChatMsg('מה במבצע עכשיו?')">🔥 מבצעים</button>
+    <button class="chat-chip" onclick="sendChatMsg('מה הכי זול בפירות וירקות?')">🥦 ירקות ופירות</button>
+    <button class="chat-chip" onclick="sendChatMsg('השווה מחירי קפה בין הסניפים')">☕ קפה</button>
+    <button class="chat-chip" onclick="sendChatMsg('מה הכי שווה לקנות היום?')">⭐ המלצות</button>
+  </div>
+  <div style="padding:10px 16px 16px;flex-shrink:0;border-top:1px solid var(--border)">
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="chat-input" placeholder="שאל שאלה על מחירים..." rows="1" style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:0.9rem;font-family:inherit;resize:none;outline:none;background:var(--surface);max-height:80px;overflow-y:auto;line-height:1.4" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+      <button id="chat-send" onclick="sendChat()" style="background:var(--blue);color:#fff;border:none;border-radius:12px;width:42px;height:42px;font-size:1.1rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:opacity 0.2s">↑</button>
+    </div>
+    <div style="font-size:0.65rem;color:var(--text3);margin-top:6px;text-align:center">מופעל ע"י Gemini · הנתונים מהסניפים בגבעתיים</div>
+  </div>
+</div>
+
+<script>
+const DATA_URL = 'https://raw.githubusercontent.com/fguy10-max/shufersal-tracker/main/shufersal_prices.json';
+const CAT = { dairy:{i:'🥛',l:'חלב ומוצרי חלב'}, eggs:{i:'🥚',l:'ביצים'}, poultry:{i:'🍗',l:'עוף'}, meat:{i:'🥩',l:'בשר'}, fish:{i:'🐟',l:'דגים ופירות ים'}, produce:{i:'🥦',l:'ירקות ופירות'}, bakery:{i:'🍞',l:'לחם ומאפים'}, cakes:{i:'🎂',l:'עוגות ומאפים מתוקים'}, cookies:{i:'🍪',l:'עוגיות וקרקרים'}, chocolate:{i:'🍫',l:'שוקולד'}, candy:{i:'🍬',l:'ממתקים'}, snacks:{i:'🍿',l:'חטיפים'}, nuts:{i:'🥜',l:'אגוזים וגרעינים'}, beverages:{i:'🧃',l:'משקאות'}, coffee:{i:'☕',l:'קפה'}, tea:{i:'🍵',l:'תה'}, condiments:{i:'🫒',l:'שמנים ורטבים'}, grains:{i:'🌾',l:'דגנים וקטניות'}, breakfast:{i:'🥣',l:'ארוחת בוקר'}, spices:{i:'🌶️',l:'תבלינים'}, pantry:{i:'🥫',l:'שימורים ומזון ארוז'}, frozen:{i:'❄️',l:'מוצרים קפואים'}, alcohol:{i:'🍺',l:'אלכוהול'}, hygiene:{i:'🧴',l:'טיפוח וגהות'}, cosmetics:{i:'💄',l:'קוסמטיקה ויופי'}, pharmacy:{i:'💊',l:'בריאות ורפואה'}, cleaning:{i:'🧹',l:'ניקיון הבית'}, baby:{i:'👶',l:'תינוקות'}, pets:{i:'🐾',l:'חיות מחמד'}, household:{i:'🏠',l:'כלי בית'}, other:{i:'📦',l:'אחר'}};
+const SC = { sheli_shabit:'#1d4ed8', express_histadrut:'#15803d', citymarket_givataim:'#b45309', goodpharm_givataim:'#9333ea' };
+const DEFAULT_HIDDEN = ['alcohol','baby','pets','other'];
+
+let DATA, STORES=[], allProducts=[], catMap={}, compMap={};
+let curCat='all', curFilter='all', curView='grid';
+let watching = new Set(JSON.parse(localStorage.getItem('w')||'[]'));
+let cart = JSON.parse(localStorage.getItem('c')||'[]');
+let hiddenCats = new Set(JSON.parse(localStorage.getItem('h')||JSON.stringify(DEFAULT_HIDDEN)));
+
+const prog = (p,m) => { document.getElementById('prog').style.width=p+'%'; document.getElementById('splash-msg').textContent=m; };
+
+async function boot() {
+  prog(15,'מתחבר...');
+  try {
+    const r = await fetch(DATA_URL+'?t='+Date.now());
+    if(!r.ok) throw new Error(r.status);
+    prog(55,'מנתח...');
+    DATA = await r.json();
+  } catch(e) {
+    document.getElementById('splash-msg').textContent='❌ '+e.message;
+    return;
+  }
+  prog(85,'בונה...');
+  STORES = DATA.stores||[];
+  compMap = DATA.comparison?.barcodes||{};
+  rebuildProducts();
+  prog(100,'');
+  setTimeout(()=>{ document.getElementById('splash').classList.add('done'); init(); }, 300);
+}
+
+function rebuildProducts() {
+  catMap={}; allProducts=[];
+  for(const store of STORES) {
+    for(const [cat,items] of Object.entries(store.categories||{})) {
+      if(hiddenCats.has(cat)) continue;
+      if(!catMap[cat]) catMap[cat]=[];
+      for(const p of items) {
+        const np={...p, _sid:store.id, _sname:store.short};
+        if(compMap[p.barcode]) np._prices=compMap[p.barcode].prices;
+        if(np.promo && ['סיבוס','SBOX','תו זהב','ח"ע','ח.ע','קופון ח'].some(w => np.promo.includes(w))) {
+          np.promo = null; np.promoPrice = null;
+        }
+        catMap[cat].push(np);
+        allProducts.push(np);
+      }
+    }
+  }
+}
+
+function init() {
+  const total = STORES.reduce((s,st)=>s+st.totalProducts,0);
+  const promos = STORES.reduce((s,st)=>s+st.totalWithPromo,0);
+  const shared = Object.values(compMap).filter(d=>Object.keys(d.prices).length>=2).length;
+  
+  document.getElementById('s-total').textContent = total.toLocaleString();
+  document.getElementById('s-promos').textContent = promos;
+  document.getElementById('s-compare').textContent = shared.toLocaleString();
+  
+  document.getElementById('s-total-disp').textContent = total.toLocaleString();
+  document.getElementById('s-promos-disp').textContent = promos;
+  document.getElementById('s-compare-disp').textContent = shared.toLocaleString();
+  document.getElementById('s-watch').textContent = watching.size;
+  
+  buildSidebar();
+  buildStoreFilter();
+  if(window.innerWidth <= 720) {
+    curView = 'list';
+    document.getElementById('vbtn-grid').classList.remove('on');
+    document.getElementById('vbtn-list').classList.add('on');
+  }
+  render();
+  updateBadge();
+}
+
+let curStore = 'all';
+
+function buildStoreFilter(){
+  const el = document.getElementById('store-filter');
+  el.innerHTML = `<button class="store-btn on" id="sf-all" onclick="setStore('all')" style="background:var(--text);border-color:var(--text)">🏠 כל הסניפים</button>` + 
+    STORES.map(s=>`<button class="store-btn" id="sf-${s.id}" onclick="setStore('${s.id}')" data-color="${SC[s.id]||'#999'}"><div style="width:7px;height:7px;border-radius:50%;background:${SC[s.id]||'#999'}"></div>${s.short}</button>`).join('');
+}
+
+function setStore(storeId){
+  curStore = storeId;
+  document.querySelectorAll('.store-btn').forEach(b=>b.classList.remove('on'));
+  const activeBtn = document.getElementById('sf-'+storeId);
+  if(activeBtn){
+    activeBtn.classList.add('on');
+    if(storeId==='all'){ activeBtn.style.background='var(--text)'; activeBtn.style.borderColor='var(--text)'; } 
+    else { const col = SC[storeId]||'#999'; activeBtn.style.background=col; activeBtn.style.borderColor=col; }
+  }
+  document.querySelectorAll('.store-btn:not(.on)').forEach(b=>{ b.style.background='var(--bg)'; b.style.borderColor='var(--border)'; });
+  render();
+}
+
+function buildSidebar() {
+  const el = document.getElementById('sidebar');
+  let h = '<div class="sb-label">קטגוריות</div>';
+  h += mkCatItem('all','🏠','הכל',allProducts.length,true);
+  for(const [cat,items] of Object.entries(catMap).sort((a,b)=>b[1].length-a[1].length)) {
+    const m = CAT[cat]||{i:'📦',l:cat};
+    h += mkCatItem(cat, m.i, m.l, items.length, false, items.filter(p=>p.promo).length, items.filter(p=>p.vsAvgPct<-5).length);
+  }
+  el.innerHTML = h;
+}
+
+function mkCatItem(id,icon,label,count,active,deals=0,cheap=0) {
+  const badge = deals>0 ? `<span class="cat-badge cb-deal">${deals}</span>` : cheap>0 ? `<span class="cat-badge cb-cheap">${cheap}</span>` : `<span class="cat-count">${count}</span>`;
+  return `<div class="cat-item${active?' active':''}" onclick="selectCat('${id}',this)"><span class="cat-icon">${icon}</span><span class="cat-label">${label}</span>${badge}</div>`;
+}
+
+function selectCat(id,el) {
+  curCat=id;
+  document.querySelectorAll('.cat-item').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = id==='all' ? 'כל המוצרים' : (CAT[id]||{l:id}).l;
+  document.getElementById('search').value='';
+  render();
+}
+
+function setFilter(f,btn) { curFilter=f; document.querySelectorAll('.fchip').forEach(c=>{ c.className='fchip'; }); btn.classList.add(f==='all'?'on':'on-'+f); render(); }
+// השלמת פונקציית setView שכיסתה פונקציה אחרת
+function setView(v) { curView=v; ['grid','list'].forEach(x=>{ document.getElementById('vbtn-'+x).classList.toggle('on',x===v); }); render(); }
+
+function getProducts() {
+  let list = curCat==='all' ? [...allProducts] : [...(catMap[curCat]||[])];
+  if(curStore!=='all') list = list.filter(p=>p._sid===curStore);
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q));
+  if(curFilter==='deal') list=list.filter(p=>p.promo);
+  if(curFilter==='cheap') list=list.filter(p=>p.vsAvgPct<-5);
+  if(curFilter==='drop') list=list.filter(p=>p.changePct!=null && p.changePct<-3 && p.prevPrice !== p.price);
+  if(curFilter==='watch') list=list.filter(p=>watching.has(p.barcode));
+  
+  const sort = document.getElementById('sort').value;
+  if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name,'he'));
+  else if(sort==='price_asc') list.sort((a,b)=>a.price-b.price);
+  else if(sort==='price_desc') list.sort((a,b)=>b.price-a.price);
+  else if(sort==='cheap') list.sort((a,b)=>(a.vsAvgPct??999)-(b.vsAvgPct??999));
+  else if(sort==='drop') list.sort((a,b)=>(a.changePct??1)-(b.changePct??1));
+  else if(sort==='diff') list.sort((a,b)=>{
+    const da=a._prices?Math.max(...Object.values(a._prices))-Math.min(...Object.values(a._prices)):0;
+    const db=b._prices?Math.max(...Object.values(b._prices))-Math.min(...Object.values(b._prices)):0;
+    return db-da;
+  });
+  else if(sort==='attractive') {
+    const score = p => {
+      let s = 0;
+      if(p.changePct && p.changePct < -3) s += Math.abs(p.changePct) * 2 + ((p.vsAvgPct && p.vsAvgPct < 0) ? Math.abs(p.vsAvgPct) : 0);
+      if(p.vsAvgPct && p.vsAvgPct < -5) s += Math.abs(p.vsAvgPct) * 0.5;
+      if(p.promo && !p.promo.includes('🎫')) {
+        const ppA = parsePromoPrice(p.promo, p.price);
+        s += ppA?.unitPrice ? (8 + Math.min((p.price - ppA.unitPrice)/p.price*50, 15)) : 8;
+      }
+      if(p._prices && Object.keys(p._prices).length>=2) {
+        const vals = Object.values(p._prices);
+        if((p.effectivePrice??p.price) === Math.min(...vals) && Math.max(...vals) > Math.min(...vals)) s += 8;
+      }
+      return s;
+    };
+    list.sort((a,b) => score(b) - score(a));
+  }
+  return list;
+}
+
+function render() {
+  const products = getProducts();
+  const area = document.getElementById('grid-area'), empty = document.getElementById('empty');
+  document.getElementById('results-meta').textContent = products.length ? `${Math.min(products.length,300).toLocaleString()} מתוך ${products.length.toLocaleString()}` : '';
+  if(!products.length) { area.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const isList = curView==='list';
+  area.className = isList ? 'list-view' : 'grid';
+  area.innerHTML = products.slice(0,300).map((p,i)=>mkCard(p,i,isList)).join('');
+}
+
+function mkCard(p,i,isList) {
+  const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3 && p.prevPrice !== p.price;
+  const pp0 = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
+  const effP0 = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
+  const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
+  const isCheap = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (hasCompare && effP0 === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1);
+  const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
+  const delay=`animation-delay:${Math.min(i,15)*0.03}s`, col=SC[p._sid]||'#999';
+  const escapedName = p.name.replace(/'/g,"\\'").replace(/"/g,"&quot;");
+
+  const tags = [hasDrop?'<span class="tag tag-drop">📉 ירד</span>':'', hasDeal?'<span class="tag tag-deal">🔥 מבצע</span>':'', isCheap?'<span class="tag tag-cheap">💰 זול</span>':''].join('');
+  const currentPrice = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
+
+  const storeComp = hasCompare ? `<div class="store-compare">${STORES.map(s=>{
+    const sp = p._prices[s.id], vals = Object.values(p._prices);
+    return `<div class="sc-row"><div class="sc-dot" style="background:${SC[s.id]}"></div><div class="sc-name">${s.short}</div><div class="sc-price ${sp===Math.min(...vals)?'sc-best':sp===Math.max(...vals)&&Math.min(...vals)!==Math.max(...vals)?'sc-worst':''}">${sp!==undefined?'₪'+sp.toFixed(2):'—'}</div></div>`;
+  }).join('')}</div>` : '';
+
+  if(isList) return `<div class="list-card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')"><div><div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%"></div><span style="color:${col}">${p._sname}</span></div><div class="card-name">${p.name}</div>${tags?`<div class="card-tags">${tags}</div>`:''}${p.promo?`<div style="background:#fffbeb;border-right:3px solid #f59e0b;padding:5px 8px;border-radius:0 5px 5px 0;font-size:11px;color:#92400e;margin-top:5px">🔥 ${p.promo}</div>`:''}${storeComp}</div><div style="text-align:left;flex-shrink:0"><div style="display:flex;align-items:baseline;gap:6px"><div class="price-main" style="${hasDeal?'color:var(--green)':''}">₪${currentPrice.toFixed(2)}</div></div><div class="card-actions" style="margin-top:6px"><button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button><button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button></div></div></div>`;
+
+  return `<div class="card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')"><div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%"></div><span style="color:${col}">${p._sname}</span></div><div class="card-name">${p.name}</div><div class="card-brand">${p.brand||''}</div><div class="card-price"><div class="price-main" style="${hasDeal?'color:var(--green)':''}">₪${currentPrice.toFixed(2)}</div></div>${tags?`<div class="card-tags">${tags}</div>`:''}${storeComp}<div class="card-footer"><span class="card-date">${p.updatedAt?.substring(0,10)||''}</span><div class="card-actions"><button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button><button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button></div></div></div>`;
+}
+
+function tw(bc,btn) { if(watching.has(bc)){watching.delete(bc);btn.textContent='☆';btn.classList.remove('on-watch');}else{watching.add(bc);btn.textContent='⭐';btn.classList.add('on-watch');} localStorage.setItem('w',JSON.stringify([...watching])); document.getElementById('s-watch').textContent=watching.size; }
+function tc(bc,name,price,sid,btn) { const idx=cart.findIndex(c=>c.barcode===bc); if(idx>=0){cart.splice(idx,1);btn.textContent='+';btn.classList.remove('on-cart');}else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓';btn.classList.add('on-cart');} saveCart(); }
+function saveCart(){localStorage.setItem('c',JSON.stringify(cart));updateBadge();}
+function updateBadge(){const b=document.getElementById('cart-badge');b.style.display=cart.length?'inline':'none';b.textContent=cart.length;}
+
+function openCart(){renderCart();document.getElementById('cart-bg').classList.add('open');document.getElementById('cart-drawer').classList.add('open');}
+function closeCart(){document.getElementById('cart-bg').classList.remove('open');document.getElementById('cart-drawer').classList.remove('open');}
+
+function renderCart() {
+  const body=document.getElementById('cart-body'), foot=document.getElementById('cart-foot');
+  if(!cart.length){body.innerHTML='<div class="empty-state"><div class="ei">🛒</div><p>הרשימה ריקה</p></div>';foot.innerHTML='';return;}
+  body.innerHTML=cart.map((item,idx)=>`<div class="cart-row"><div class="cart-info"><div class="cart-name">${item.name}</div><div class="cart-store">${STORES.find(s=>s.id===item.storeId)?.short||''}</div><div class="cart-qty-ctrl"><button class="qty-btn" onclick="chQty(${idx},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="chQty(${idx},1)">+</button></div></div><div style="display:flex;align-items:center;gap:8px"><div class="cart-price">₪${(item.price*item.qty).toFixed(2)}</div><button class="cart-del" onclick="rmCart(${idx})">✕</button></div></div>`).join('');
+  foot.innerHTML=`<div style="padding:10px 0;font-weight:700;font-size:1.1rem;border-top:1px solid var(--border)">סה"כ: ₪${cart.reduce((s,c)=>s+c.price*(c.qty||1),0).toFixed(2)}</div>`;
+}
+function chQty(idx,d){cart[idx].qty=Math.max(1,(cart[idx].qty||1)+d);saveCart();renderCart();}
+function rmCart(idx){cart.splice(idx,1);saveCart();renderCart();render();}
+
+function openProduct(bc,sid) {
+  const bg=document.getElementById('modal-bg'), mc=document.getElementById('modal-content');
+  let mainP=null; for(const store of STORES) for(const items of Object.values(store.categories||{})) { const f=items.find(p=>p.barcode===bc); if(f&&store.id===sid){mainP={...f,_sname:store.short,_sid:sid};break;} }
+  if(!mainP) return;
+  const prices=compMap[bc]?.prices||{[sid]:mainP.price}, vals=Object.values(prices);
+  mc.innerHTML=`<div class="modal-drag"></div><div class="modal-title">${mainP.name}</div><div class="modal-brand">${mainP.brand||''}</div><table class="compare-tbl" style="width:100%;margin-top:12px">${STORES.map(s=>`<tr><td>${s.short}</td><td>${prices[s.id]?'₪'+prices[s.id].toFixed(2):'—'}</td></tr>`).join('')}</table>`;
+  bg.classList.add('open');
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+
+function openSettings(){buildSettings();document.getElementById('settings-bg').classList.add('open');document.getElementById('settings-drawer').classList.add('open');}
+function closeSettings(){document.getElementById('settings-bg').classList.remove('open');document.getElementById('settings-drawer').classList.remove('open');}
+function buildSettings(){
+  document.getElementById('settings-body').innerHTML=`<div style="padding:16px"><p style="font-size:0.9rem;color:var(--text3)">הגדרות סינון קטגוריות</p></div>` + Object.keys(catMap).map(c=>`<div class="sd-item" onclick="toggleCat('${c}')"><span class="sd-label">${(CAT[c]||{l:c}).l}</span><div class="checkbox ${!hiddenCats.has(c)?'on':''}" id="cb-${c}"></div></div>`).join('');
+}
+function toggleCat(c){ if(hiddenCats.has(c)) hiddenCats.delete(c); else hiddenCats.add(c); const el=document.getElementById('cb-'+c); if(el) el.className='checkbox'+(hiddenCats.has(c)?'':' on'); }
+function applySettings(){ localStorage.setItem('h',JSON.stringify([...hiddenCats])); rebuildProducts(); buildSidebar(); closeSettings(); render(); }
+
+// Barcode Fallback Scanner
+function openScanner() { const bc = prompt('הכנס ברקוד ידנית:'); if(bc) { document.getElementById('search').value=bc; render(); } }
+
+// ═══════════════════════════════════════════════════════════════
+// Shopping Assistant — Gemini-powered Core Code
+// ═══════════════════════════════════════════════════════════════
+const GEMINI_KEY  = 'AIzaSyAC_EfVueCOY3Zg-uGNKxDunE47Ddc-7do'; 
+const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY;
+const chatHistory = [];
+let lastChatContext = '';
+
+function toggleChat() {
+  const panel   = document.getElementById('chat-panel');
+  const overlay = document.getElementById('chat-overlay');
+  
+  // תיקון לוגיקת הפתיחה: בודק האם הקלאס open כבר קיים
+  const isOpen  = panel.classList.contains('open');
+  
+  if (isOpen) {
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+    // הגדרת הסתרה פיזית כדי שהקליקים לא ייחסמו במובייל
+    setTimeout(() => { panel.style.display = 'none'; overlay.style.display = 'none'; }, 200);
+  } else {
+    panel.style.display = 'flex';
+    overlay.style.display = 'block';
+    // נותן לדפדפן זמן קצר להחיל את הדיספליי לפני האנימציה
+    setTimeout(() => { panel.classList.add('open'); overlay.classList.add('open'); }, 10);
+    document.getElementById('chat-input').focus();
+  }
+}
+
+function sendChatMsg(text) {
+  document.getElementById('chat-input').value = text;
+  sendChat();
+}
+
+function addChatMsg(role, html) {
+  const msgs = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  div.className = 'chat-msg chat-' + role;
+  div.innerHTML = '<div class="chat-bubble">' + html + '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function addThinking() {
+  const msgs = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  div.className = 'chat-msg chat-assistant';
+  div.innerHTML = '<div class="chat-thinking"><span></span><span></span><span></span></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function buildContext(query) {
+  const q = query.toLowerCase();
+  const stopWords = ['מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה','מחפש','נגמר','נגמרו','צריך','כמה','עולה','איפה','זול','הזה','הזאת','תביא','האם','אפשר','למצוא'];
+  const keywords = q.replace(/[?!.,]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w)).map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
+
+  if (keywords.length === 0 && lastChatContext !== '') return lastChatContext;
+
+  let scoredProducts = [];
+  for (const [catId, items] of Object.entries(catMap)) {
+    const catName = CAT[catId] ? CAT[catId].l : '';
+    for (const p of items) {
+      let score = 0, pName = p.name.toLowerCase(), matchedWords = 0;
+      for (const kw of keywords) {
+        if (pName.includes(kw)) { score += 10; matchedWords++; if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5; } 
+        else if (catName.includes(kw)) { score += 4; } 
+        else if ((p.brand || '').toLowerCase().includes(kw)) { score += 3; }
+      }
+      if (matchedWords > 1) score += (matchedWords * 5);
+      if (score > 0) scoredProducts.push({ p, score, catName });
+    }
+  }
+
+  if (scoredProducts.length === 0) {
+    let deals = allProducts.filter(p => p.promo);
+    deals.sort((a, b) => (Math.abs(b.vsAvgPct||0) - Math.abs(a.vsAvgPct||0)));
+    scoredProducts = deals.slice(0, 30).map(p => ({ p, score: 1, catName: 'מבצע' }));
+  }
+
+  scoredProducts.sort((a, b) => b.score - a.score || (a.p.effectivePrice ?? a.p.price) - (b.p.effectivePrice ?? b.p.price));
+  lastChatContext = scoredProducts.slice(0, 60).map(({ p, catName }) => `• [קטגוריה: ${catName}] ${p.name} | ${STORES.find(s=>s.id===p._sid)?.short || p._sid} | ₪${(p.effectivePrice ?? p.price).toFixed(2)}${p.promo?` [מבצע: ${p.promo.slice(0,50)}]`:''}`).join('\n');
+  return lastChatContext;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input'), query = input.value.trim();
+  if (!query) return;
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('chat-send').disabled = true;
+
+  addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+  const thinking = addThinking(), context = buildContext(query), today = new Date().toLocaleDateString('he-IL');
+
+  const systemPrompt = `אתה עוזר קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בסופרמרקטים בגבעתיים.\nהסניפים: שלי שביט, שופרסל אקספרס ההסתדרות, סיטי מרקט גבעתיים, גוד פארם גבעתיים.\nתאריך היום: ${today}.\n\nכללים חשובים לעונים:\n1. היה ספציפי עם מחירים וסניפים, והמלץ על ה-value for money הטוב ביותר.\n2. הבן הקשר (Context): שים לב לתגית [קטגוריה] במוצרים. אם המשתמש מדבר על ירקות טריים (כמו עגבניות), סנן החוצה לגמרי מוצרי שימורים או רטבים והצג רק מה שמתאים.\n3. התאמה חלופית: אם המשתמש מחפש משהו כללי (כמו "מוצרלה"), חפש ברשימה את כל תתי-הסוגים (מגורדת, פרוסות, כדורים) והצע לו אפשרויות רלוונטיות.\n4. השתמש בשקלים (₪), ענה בתשובות קצרות וברורות. אל תמציא מחירים או מוצרים שאינם ברשימה מטה.\n\nנתוני המוצרים הרלוונטיים:\n${context}`;
+
+  chatHistory.push({ role: 'user', parts: [{ text: query }] });
+
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt }] }, contents: chatHistory, generationConfig: { maxOutputTokens: 400, temperature: 0.3 } })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "שגיאת API כללית");
+
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    thinking.remove();
+
+    if (reply) {
+      addChatMsg('assistant', reply.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^[•\-] /gm, '• ').replace(/\n/g, '<br>'));
+      chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+      if (chatHistory.length > 12) chatHistory.splice(0, 2);
+    } else {
+      chatHistory.pop(); addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה, נסה שוב');
+    }
+  } catch (e) {
+    chatHistory.pop(); thinking.remove(); addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
+  }
+  document.getElementById('chat-send').disabled = false;
+  document.getElementById('chat-input').focus();
+}
+
+boot();
+</script>
+</body>
+</html>
