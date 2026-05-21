@@ -384,10 +384,8 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 </header>
 
 <div class="app">
-  <!-- Sidebar -->
   <nav class="sidebar" id="sidebar"></nav>
 
-  <!-- Main -->
   <div class="main" id="main">
     <div class="topbar">
       <div class="topbar-title" id="page-title">כל המוצרים</div>
@@ -439,7 +437,6 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
   </div>
 </div>
 
-<!-- Cart -->
 <div class="drawer-bg" id="cart-bg" onclick="closeCart()"></div>
 <div class="drawer" id="cart-drawer">
   <div class="drawer-head">
@@ -450,14 +447,12 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
   <div class="drawer-foot" id="cart-foot"></div>
 </div>
 
-<!-- Product modal -->
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal" id="modal-content">
     <div class="modal-drag"></div>
   </div>
 </div>
 
-<!-- Settings -->
 <div class="drawer-bg" id="settings-bg" onclick="closeSettings()"></div>
 <div class="settings-drawer" id="settings-drawer">
   <div class="drawer-head">
@@ -470,7 +465,6 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
   </div>
 </div>
 
-<!-- Barcode Scanner -->
 <div class="scanner-modal" id="scanner-modal">
   <div class="scanner-head">
     <div class="scanner-title">📷 סרוק ברקוד</div>
@@ -485,7 +479,6 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
   <div class="scanner-hint">כוון את הברקוד לתוך המסגרת</div>
   <div class="scanner-result" id="scanner-result"></div>
 </div>
-
 
 <script>
 const DATA_URL = 'https://raw.githubusercontent.com/fguy10-max/shufersal-tracker/main/shufersal_prices.json';
@@ -562,7 +555,6 @@ function rebuildProducts() {
       for(const p of items) {
         const np={...p, _sid:store.id, _sname:store.short};
         if(compMap[p.barcode]) np._prices=compMap[p.barcode].prices;
-        // Filter out סיבוס coupons client-side
         if(np.promo && ['סיבוס','SBOX','תו זהב','ח"ע','ח.ע','קופון ח'].some(w => np.promo.includes(w))) {
           np.promo = null; np.promoPrice = null;
         }
@@ -575,7 +567,6 @@ function rebuildProducts() {
 
 function init() {
   const d = new Date(DATA.generatedAt);
-  // stats
   const total = STORES.reduce((s,st)=>s+st.totalProducts,0);
   const promos = STORES.reduce((s,st)=>s+st.totalWithPromo,0);
   const shared = Object.values(compMap).filter(d=>Object.keys(d.prices).length>=2).length;
@@ -586,7 +577,6 @@ function init() {
   
   buildSidebar();
   buildStoreFilter();
-  // Default to list view on mobile
   if(window.innerWidth <= 720) {
     curView = 'list';
     document.getElementById('vbtn-grid').classList.remove('on');
@@ -615,7 +605,6 @@ function buildStoreFilter(){
 
 function setStore(storeId){
   curStore = storeId;
-  // עדכון כפתורים
   document.querySelectorAll('.store-btn').forEach(b=>b.classList.remove('on'));
   const activeBtn = document.getElementById('sf-'+storeId);
   if(activeBtn){
@@ -629,7 +618,6 @@ function setStore(storeId){
       activeBtn.style.borderColor=col;
     }
   }
-  // reset all buttons bg
   document.querySelectorAll('.store-btn:not(.on)').forEach(b=>{
     b.style.background='var(--bg)';
     b.style.borderColor='var(--border)';
@@ -685,7 +673,6 @@ function setView(v) {
 
 function getProducts() {
   let list = curCat==='all' ? [...allProducts] : [...(catMap[curCat]||[])];
-  // פילטר לפי סניף
   if(curStore!=='all') list = list.filter(p=>p._sid===curStore);
   const q = document.getElementById('search').value.trim().toLowerCase();
   if(q) list = list.filter(p=>p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q));
@@ -699,7 +686,6 @@ function getProducts() {
   else if(sort==='price_desc') list.sort((a,b)=>b.price-a.price);
   else if(sort==='cheap') list.sort((a,b)=>(a.vsAvgPct??999)-(b.vsAvgPct??999));
   else if(sort==='drop') list.sort((a,b)=>{
-    // null = no history, push to bottom
     if(a.changePct==null && b.changePct==null) return 0;
     if(a.changePct==null) return 1;
     if(b.changePct==null) return -1;
@@ -708,26 +694,21 @@ function getProducts() {
   else if(sort==='attractive') {
     const score = p => {
       let s = 0;
-      // ירידת מחיר משמעותית (מעל 3%) שלא חזרה לממוצע
       if(p.changePct && p.changePct < -3) {
         const dropScore = Math.abs(p.changePct) * 2;
-        // בונוס אם גם זול מממוצע (ירידה אמיתית, לא רק תנודה)
         const avgBonus = (p.vsAvgPct && p.vsAvgPct < 0) ? Math.abs(p.vsAvgPct) : 0;
         s += dropScore + avgBonus;
       }
-      // זול מממוצע גם בלי ירידה
       if(p.vsAvgPct && p.vsAvgPct < -5) s += Math.abs(p.vsAvgPct) * 0.5;
-      // מבצע אמיתי — ניקוד לפי גודל החיסכון
       if(p.promo && !p.promo.includes('🎫')) {
         const ppA = parsePromoPrice(p.promo, p.price);
         if(ppA?.unitPrice) {
           const savingsPct = Math.round((p.price - ppA.unitPrice) / p.price * 100);
-          s += 8 + Math.min(savingsPct * 0.5, 15); // מקסימום 23 נקודות
+          s += 8 + Math.min(savingsPct * 0.5, 15);
         } else {
           s += 8;
         }
       }
-      // הכי זול בין סניפים (כולל מחיר מבצע)
       if(p._prices && Object.keys(p._prices).length>=2) {
         const vals = Object.values(p._prices);
         const pp = parsePromoPrice(p.promo, p.price);
@@ -763,7 +744,6 @@ function render() {
 function mkCard(p,i,isList) {
   const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3 && p.prevPrice !== p.price;
   const pp0 = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
-  // Prefer scraper-computed effectivePrice (handles NבX patterns correctly)
   const effP0 = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
   const effVsAvg = p.vsAvgPct!=null ? Math.round((effP0/p.price - 1 + p.vsAvgPct/100) * 100) : p.vsAvgPct;
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
@@ -782,8 +762,6 @@ function mkCard(p,i,isList) {
     isCheap ? '<span class="tag tag-cheap">💰 זול</span>' : '',
   ].filter(Boolean).join('');
 
-
-  // השוואת סניפים — כולל סניפים שאין בהם
   const promoData = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
   const currentPrice = promoData ? (p.effectivePrice ?? promoData.unitPrice) : p.price;
   
@@ -909,7 +887,6 @@ function renderCart() {
       </div>
     </div>`).join('');
 
-  // השוואת עלות הסל — ללא fallback
   const totalQty=cart.reduce((s,c)=>s+(c.qty||1),0);
   const storeTotals={}, storeFound={}, storeMissing={};
   for(const s of STORES){storeTotals[s.id]=0;storeFound[s.id]=0;storeMissing[s.id]=0;}
@@ -962,10 +939,8 @@ function searchSimilar(name) {
   document.querySelector('.cat-item').classList.add('active');
   document.getElementById('page-title').textContent = 'כל המוצרים';
   
-  // Grab the first 3 words of the name to search
-  // Strip quantities, percentages, brand suffixes before searching
   const terms = name
-    .replace(/\d+[%גרםמ"לקגליטר]+/g, '')  // remove 3%, 200גרם, 1.5ליטר etc
+    .replace(/\d+[%גרםמ"לקגליטר]+/g, '') 
     .replace(/['"]/g, '')
     .trim()
     .split(/\s+/)
@@ -982,14 +957,12 @@ function searchSimilar(name) {
 // Product modal
 function openProduct(bc,sid) {
   const bg=document.getElementById('modal-bg'), mc=document.getElementById('modal-content');
-  // מוצא את המוצר
   let mainP=null;
   for(const store of STORES) for(const items of Object.values(store.categories||{})) {
     const f=items.find(p=>p.barcode===bc);
     if(f&&store.id===sid){mainP={...f,_sname:store.short,_sid:sid};break;}
     if(f&&!mainP)mainP={...f,_sname:store.short,_sid:store.id};
   }
-  // Filter סיבוס in modal too
   if(mainP?.promo && ['סיבוס','SBOX','תו זהב','ח"ע','ח.ע','קופון ח'].some(w => mainP.promo.includes(w))) {
     mainP.promo = null; mainP.promoPrice = null;
   }
@@ -1109,7 +1082,6 @@ function tcModal(bc,name,price,sid){
 function openSettings(){buildSettings();document.getElementById('settings-bg').classList.add('open');document.getElementById('settings-drawer').classList.add('open');}
 function closeSettings(){document.getElementById('settings-bg').classList.remove('open');document.getElementById('settings-drawer').classList.remove('open');}
 function buildSettings(){
-  // בניית רשימת כל הקטגוריות — כולל מוסתרות
   const allCatKeys = Object.keys({...catMap,
     ...Object.fromEntries([...hiddenCats].map(c=>[c,[]]))
   }).sort((a,b)=>((catMap[b]?.length||0))-(catMap[a]?.length||0));
@@ -1166,7 +1138,6 @@ function toggleCat(cat){
   else hiddenCats.add(cat);
   const el=document.getElementById('cb-'+cat);
   if(el) el.className='checkbox'+(hiddenCats.has(cat)?'':' on');
-  // עדכון כפתור בחר/הסר הכל
   const allCatKeys=Object.keys({...catMap,...Object.fromEntries([...hiddenCats].map(c=>[c,[]]))});
   const allVisible=allCatKeys.every(c=>!hiddenCats.has(c));
   const btn=document.querySelector('.sd-toggle-btn');
@@ -1195,9 +1166,7 @@ async function openScanner() {
   const video = document.getElementById('scanner-video');
   const btn   = document.getElementById('scan-btn');
 
-  // Check support
   if (!('BarcodeDetector' in window)) {
-    // Fallback: manual barcode input
     const bc = prompt('הכניסו מספר ברקוד ידנית:');
     if(bc) searchByBarcode(bc.trim());
     return;
@@ -1245,7 +1214,6 @@ function closeScanner() {
 function showScanResult(barcode) {
   const resultEl = document.getElementById('scanner-result');
 
-  // חיפוש המוצר בכל הסניפים
   const found = [];
   for(const store of STORES) {
     for(const items of Object.values(store.categories||{})) {
@@ -1254,7 +1222,6 @@ function showScanResult(barcode) {
     }
   }
 
-  // Vibrate if supported
   if(navigator.vibrate) navigator.vibrate(100);
 
   if(!found.length) {
@@ -1324,12 +1291,9 @@ function showScanResult(barcode) {
 function searchByBarcode(barcode) {
   document.getElementById('search').value = barcode;
   render();
-  // scroll to results
   document.getElementById('grid-area').scrollIntoView({behavior:'smooth'});
 }
 
-
-// Parse effective unit price from promo description
 function buildSparkline(history, lo, hi) {
   if (!history || history.length < 2) return '';
   const range = hi - lo || 1;
@@ -1350,13 +1314,11 @@ function buildSparkline(history, lo, hi) {
     '</svg>';
 }
 
-
 function parsePromoPrice(desc, regularPrice) {
   if (!desc || desc.includes('🎫')) return null;
   if (desc.includes('מעל קניה') || desc.includes('בקניה')) return null;
   let qty = 1, unitPrice = null;
 
-  // Pattern 1: NבPRICE — "2ב22", "3ב18", "קטיף 2ב18"
   let m = desc.match(/(\d+)\s*ב\s*(\d+(?:[.,]\d+)?)/);
   if (m) {
     qty = parseInt(m[1]);
@@ -1365,7 +1327,6 @@ function parsePromoPrice(desc, regularPrice) {
     if (unitPrice <= 0 || unitPrice >= regularPrice) unitPrice = null;
   }
 
-  // Pattern 2: "ב2- ב 65", "ב2-ב120" — price after SECOND ב
   if (!unitPrice) {
     m = desc.match(/ב\s*\d+\s*[-–]\s*ב\s*(\d+(?:[.,]\d+)?)/);
     if (m) {
@@ -1374,7 +1335,6 @@ function parsePromoPrice(desc, regularPrice) {
     }
   }
 
-  // Pattern 3a: "ב79.90-" — price BEFORE dash
   if (!unitPrice) {
     m = desc.match(/ב(\d+(?:[.,]\d+)?)\s*[-–]/);
     if (m) {
@@ -1383,7 +1343,6 @@ function parsePromoPrice(desc, regularPrice) {
     }
   }
 
-  // Pattern 3b: "ב- 149", "ב. 23.90" — separator then price
   if (!unitPrice) {
     m = desc.match(/ב\s*[-–.]\s*(\d+(?:[.,]\d+)?)/);
     if (m) {
@@ -1392,13 +1351,11 @@ function parsePromoPrice(desc, regularPrice) {
     }
   }
 
-  // Pattern 4: 1+1
   if (!unitPrice && desc.includes('1+1')) {
     unitPrice = Math.round(regularPrice * 50) / 100;
     qty = 2;
   }
 
-  // Pattern 5: standalone price — "קטיף 4.90 בטטות", "15.90 לחם"
   if (!unitPrice) {
     m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=\s|$)/);
     if (m) {
@@ -1412,352 +1369,6 @@ function parsePromoPrice(desc, regularPrice) {
   return { unitPrice, qty, savings };
 }
 
-
-// ═══════════════════════════════════════════════════════════════
-// Shopping Assistant — Gemini-powered
-// ═══════════════════════════════════════════════════════════════
-
-const GEMINI_KEY  = 'AIzaSyAC_EfVueCOY3Zg-uGNKxDunE47Ddc-7do'; // paste key here
-const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY;
-const chatHistory = [];
-
-function toggleChat() {
-  const panel   = document.getElementById('chat-panel');
-  const overlay = document.getElementById('chat-overlay');
-  const isOpen  = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('open', !isOpen);
-  if (!isOpen) document.getElementById('chat-input').focus();
-}
-
-function sendChatMsg(text) {
-  document.getElementById('chat-input').value = text;
-  sendChat();
-}
-
-function addChatMsg(role, html) {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = 'chat-msg chat-' + role;
-  div.innerHTML = '<div class="chat-bubble">' + html + '</div>';
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-function addThinking() {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = 'chat-msg chat-assistant';
-  div.innerHTML = '<div class="chat-thinking"><span></span><span></span><span></span></div>';
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-function buildContext(query) {
-  // Build a concise, relevant product context from loaded data
-  const q = query.toLowerCase();
-
-  // Detect what the user is asking about
-  const keywords = q
-    .replace(/[?!.,]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !['מה','איזה','איזו','הכי','עם','של','בין','לי','את'].includes(w));
-
-  // Find relevant products (max 30)
-  let products = [...allProducts];
-
-  // Filter by category or keyword
-  const catMatch = Object.entries(CAT).find(([k, v]) =>
-    q.includes(v.l) || q.includes(k) || keywords.some(kw => v.l.includes(kw))
-  );
-  if (catMatch) {
-    products = products.filter(p => p._cat === catMatch[0]);
-  } else {
-    // Filter by keyword match
-    products = products.filter(p =>
-      keywords.some(kw => p.name.toLowerCase().includes(kw))
-    ).slice(0, 40);
-  }
-
-  // Filter by store if mentioned
-  const storeNames = {
-    'שביט': 'sheli_shabit', 'שלי': 'sheli_shabit',
-    'אקספרס': 'express_histadrut', 'ההסתדרות': 'express_histadrut',
-    'סיטי': 'citymarket_givataim', 'סיטי מרקט': 'citymarket_givataim',
-    'גוד פארם': 'goodpharm_givataim', 'גוד': 'goodpharm_givataim',
-  };
-  for (const [name, sid] of Object.entries(storeNames)) {
-    if (q.includes(name)) {
-      products = products.filter(p => p._sid === sid);
-      break;
-    }
-  }
-
-  // Sort by best value
-  products.sort((a, b) => {
-    const ea = a.effectivePrice ?? a.price;
-    const eb = b.effectivePrice ?? b.price;
-    if (a.pricePer100 && b.pricePer100) return a.pricePer100 - b.pricePer100;
-    return ea - eb;
-  });
-
-  products = products.slice(0, 25);
-
-  if (!products.length) {
-    // Fallback: show deals
-    products = [...allProducts]
-      .filter(p => p.promo)
-      .sort((a,b) => (Math.abs(b.vsAvgPct||0) - Math.abs(a.vsAvgPct||0)))
-      .slice(0, 20);
-  }
-
-  // Format for the prompt
-  const lines = products.map(p => {
-    const eff = p.effectivePrice ?? p.price;
-    const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
-    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0,50)}]` : '';
-    const p100 = p.pricePer100 ? ` | ₪${p.pricePer100}/100${p.unitType==='ml'?'מל':'ג'}` : '';
-    const vsAvg = p.vsAvgPct != null ? ` | ${p.vsAvgPct>0?'+':''}${p.vsAvgPct}% ממוצע` : '';
-    return `• ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${p100}${vsAvg}`;
-  }).join('\n');
-
-  return lines;
-}
-
-async function sendChat() {
-  const input = document.getElementById('chat-input');
-  const query = input.value.trim();
-  if (!query) return;
-  if (GEMINI_KEY === 'YOUR_GEMINI_API_KEY') {
-    addChatMsg('assistant', '⚠️ יש להוסיף מפתח Gemini API בקוד (GEMINI_KEY)');
-    return;
-  }
-
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('chat-send').disabled = true;
-
-  // Show user message
-  addChatMsg('user', query.replace(/</g,'&lt;'));
-
-  // Show thinking
-  const thinking = addThinking();
-
-  // Build context from product data
-  const context = buildContext(query);
-  const today = new Date().toLocaleDateString('he-IL');
-
-  // ═══════════════════════════════════════════════════════════════
-// Shopping Assistant — Gemini-powered
-// ═══════════════════════════════════════════════════════════════
-
-const GEMINI_KEY  = 'AIzaSyAC_EfVueCOY3Zg-uGNKxDunE47Ddc-7do'; // חובה להחליף מפתח אחרי הבדיקות!
-const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY;
-const chatHistory = [];
-let lastChatContext = ''; // שומר את הזיכרון של החיפוש האחרון
-
-function toggleChat() {
-  const panel   = document.getElementById('chat-panel');
-  const overlay = document.getElementById('chat-overlay');
-  const isOpen  = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('open', !isOpen);
-  if (!isOpen) document.getElementById('chat-input').focus();
-}
-
-function sendChatMsg(text) {
-  document.getElementById('chat-input').value = text;
-  sendChat();
-}
-
-function addChatMsg(role, html) {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = 'chat-msg chat-' + role;
-  div.innerHTML = '<div class="chat-bubble">' + html + '</div>';
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-function addThinking() {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = 'chat-msg chat-assistant';
-  div.innerHTML = '<div class="chat-thinking"><span></span><span></span><span></span></div>';
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-function buildContext(query) {
-  const q = query.toLowerCase();
-
-  // 1. הסרת מילות קישור והורדת קידומת 'ה'
-  const stopWords = ['מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה','מחפש','נגמר','נגמרו','צריך','כמה','עולה','איפה','זול','הזה','הזאת','תביא','האם','אפשר','למצוא'];
-  
-  const keywords = q
-    .replace(/[?!.,]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !stopWords.includes(w))
-    // מוריד את האות "ה" בתחילת מילה ארוכה
-    .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
-
-  // שימוש בזיכרון אם השאלה קצרה מדי (כמו "כן?")
-  if (keywords.length === 0 && lastChatContext !== '') {
-    return lastChatContext;
-  }
-
-  let scoredProducts = [];
-
-  // 2. חיפוש חכם וניקוד
-  for (const [catId, items] of Object.entries(catMap)) {
-    const catName = CAT[catId] ? CAT[catId].l : '';
-    
-    for (const p of items) {
-      let score = 0;
-      let pName = p.name.toLowerCase();
-      let matchedWords = 0;
-      
-      for (const kw of keywords) {
-        if (pName.includes(kw)) {
-          score += 10;
-          matchedWords++;
-          if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5; // בונוס למילה שלמה
-        } else if (catName.includes(kw)) {
-          score += 4; // ניקוד אם המילה היא שם קטגוריה
-        } else if ((p.brand || '').toLowerCase().includes(kw)) {
-          score += 3;
-        }
-      }
-
-      if (matchedWords > 1) score += (matchedWords * 5); // בונוס להקשר רחב
-
-      if (score > 0) {
-        scoredProducts.push({ p, score, catName });
-      }
-    }
-  }
-
-  // 3. גיבוי - אם לא נמצא כלום, מביאים מבצעים כלליים
-  if (scoredProducts.length === 0) {
-    let deals = allProducts.filter(p => p.promo);
-    deals.sort((a, b) => (Math.abs(b.vsAvgPct||0) - Math.abs(a.vsAvgPct||0)));
-    scoredProducts = deals.slice(0, 30).map(p => ({ p, score: 1, catName: 'מבצע' }));
-  }
-
-  // 4. מיון
-  scoredProducts.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    const ea = a.p.effectivePrice ?? a.p.price;
-    const eb = b.p.effectivePrice ?? b.p.price;
-    return ea - eb;
-  });
-
-  const topResults = scoredProducts.slice(0, 60);
-
-  // 5. בניית הטקסט לבוט - מוסיפים את שם הקטגוריה לכל שורה
-  const lines = topResults.map(({ p, catName }) => {
-    const eff = p.effectivePrice ?? p.price;
-    const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
-    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0,50)}]` : '';
-    const p100 = p.pricePer100 ? ` | ₪${p.pricePer100}/100${p.unitType==='ml'?'מל':'ג'}` : '';
-    
-    return `• [קטגוריה: ${catName}] ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${p100}`;
-  }).join('\n');
-
-  lastChatContext = lines;
-  return lines;
-}
-
-async function sendChat() {
-  const input = document.getElementById('chat-input');
-  const query = input.value.trim();
-  if (!query) return;
-  if (GEMINI_KEY === 'YOUR_GEMINI_API_KEY') {
-    addChatMsg('assistant', '⚠️ יש להוסיף מפתח Gemini API בקוד (GEMINI_KEY)');
-    return;
-  }
-
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('chat-send').disabled = true;
-
-  // הצגת שאלת המשתמש (עם המרת תווים מיוחדים כדי למנוע חיתוך טקסט)
-  addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-
-  const thinking = addThinking();
-  const context = buildContext(query);
-  const today = new Date().toLocaleDateString('he-IL');
-
-  const systemPrompt = `אתה עוזר קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בסופרמרקטים בגבעתיים.
-הסניפים: שלי שביט, שופרסל אקספרס ההסתדרות, סיטי מרקט גבעתיים, גוד פארם גבעתיים.
-תאריך היום: ${today}.
-
-כללים חשובים לעונים:
-1. היה ספציפי עם מחירים וסניפים, והמלץ על ה-value for money הטוב ביותר.
-2. הבן הקשר (Context): שים לב לתגית [קטגוריה] במוצרים. אם המשתמש מדבר על ירקות טריים (כמו עגבניות), סנן החוצה לגמרי מוצרי שימורים או רטבים והצג רק מה שמתאים.
-3. התאמה חלופית: אם המשתמש מחפש משהו כללי (כמו "מוצרלה"), חפש ברשימה את כל תתי-הסוגים (מגורדת, פרוסות, כדורים) והצע לו אפשרויות רלוונטיות.
-4. השתמש בשקלים (₪), ענה בתשובות קצרות וברורות. אל תמציא מחירים או מוצרים שאינם ברשימה מטה.
-
-נתוני המוצרים הרלוונטיים (ממוינים לפי התאמה):
-${context}`;
-
-  chatHistory.push({ role: 'user', parts: [{ text: query }] });
-
-  try {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: chatHistory,
-        generationConfig: { maxOutputTokens: 400, temperature: 0.3 }
-      })
-    });
-
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.error?.message || "שגיאת API כללית");
-    }
-
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    thinking.remove();
-
-    if (reply) {
-      // 1. נמיר תווים בעייתיים כמו < ו-> כדי שהדפדפן לא יבלע את הטקסט
-      const safeReply = reply.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      
-      // 2. נחיל את העיצוב
-      const formatted = safeReply
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^[•\-] /gm, '• ')
-        .replace(/\n/g, '<br>');
-        
-      addChatMsg('assistant', formatted);
-      
-      chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      if (chatHistory.length > 12) chatHistory.splice(0, 2);
-    } else {
-      chatHistory.pop();
-      addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה, נסה שוב');
-    }
-  } catch (e) {
-    chatHistory.pop();
-    thinking.remove();
-    addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
-  }
-
-  document.getElementById('chat-send').disabled = false;
-  document.getElementById('chat-input').focus();
-}
-
-
-boot();
-</script>
 // ═══════════════════════════════════════════════════════════════
 // Shopping Assistant — Gemini-powered
 // ═══════════════════════════════════════════════════════════════
@@ -1765,7 +1376,7 @@ boot();
 const GEMINI_KEY  = 'AIzaSyAC_EfVueCOY3Zg-uGNKxDunE47Ddc-7do'; // חובה להחליף מפתח אחרי הבדיקות!
 const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY;
 const chatHistory = [];
-let lastChatContext = ''; // שומר את הזיכרון של החיפוש האחרון
+let lastChatContext = ''; 
 
 function toggleChat() {
   const panel   = document.getElementById('chat-panel');
@@ -1830,15 +1441,15 @@ function buildContext(query) {
         if (pName.includes(kw)) {
           score += 10;
           matchedWords++;
-          if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5;
+          if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5; 
         } else if (catName.includes(kw)) {
-          score += 4;
+          score += 4; 
         } else if ((p.brand || '').toLowerCase().includes(kw)) {
           score += 3;
         }
       }
 
-      if (matchedWords > 1) score += (matchedWords * 5);
+      if (matchedWords > 1) score += (matchedWords * 5); 
 
       if (score > 0) {
         scoredProducts.push({ p, score, catName });
