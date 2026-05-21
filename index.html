@@ -1758,10 +1758,205 @@ ${context}`;
 
 boot();
 </script>
+// ═══════════════════════════════════════════════════════════════
+// Shopping Assistant — Gemini-powered
+// ═══════════════════════════════════════════════════════════════
 
-<!-- ═══════════════════════════════════════════════════
-     Shopping Assistant Chat Panel
-═══════════════════════════════════════════════════ -->
+const GEMINI_KEY  = 'AIzaSyAC_EfVueCOY3Zg-uGNKxDunE47Ddc-7do'; // חובה להחליף מפתח אחרי הבדיקות!
+const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY;
+const chatHistory = [];
+let lastChatContext = ''; // שומר את הזיכרון של החיפוש האחרון
+
+function toggleChat() {
+  const panel   = document.getElementById('chat-panel');
+  const overlay = document.getElementById('chat-overlay');
+  const isOpen  = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  if (!isOpen) document.getElementById('chat-input').focus();
+}
+
+function sendChatMsg(text) {
+  document.getElementById('chat-input').value = text;
+  sendChat();
+}
+
+function addChatMsg(role, html) {
+  const msgs = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  div.className = 'chat-msg chat-' + role;
+  div.innerHTML = '<div class="chat-bubble">' + html + '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function addThinking() {
+  const msgs = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  div.className = 'chat-msg chat-assistant';
+  div.innerHTML = '<div class="chat-thinking"><span></span><span></span><span></span></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function buildContext(query) {
+  const q = query.toLowerCase();
+
+  const stopWords = ['מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה','מחפש','נגמר','נגמרו','צריך','כמה','עולה','איפה','זול','הזה','הזאת','תביא','האם','אפשר','למצוא'];
+  
+  const keywords = q
+    .replace(/[?!.,]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.includes(w))
+    .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
+
+  if (keywords.length === 0 && lastChatContext !== '') {
+    return lastChatContext;
+  }
+
+  let scoredProducts = [];
+
+  for (const [catId, items] of Object.entries(catMap)) {
+    const catName = CAT[catId] ? CAT[catId].l : '';
+    
+    for (const p of items) {
+      let score = 0;
+      let pName = p.name.toLowerCase();
+      let matchedWords = 0;
+      
+      for (const kw of keywords) {
+        if (pName.includes(kw)) {
+          score += 10;
+          matchedWords++;
+          if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5;
+        } else if (catName.includes(kw)) {
+          score += 4;
+        } else if ((p.brand || '').toLowerCase().includes(kw)) {
+          score += 3;
+        }
+      }
+
+      if (matchedWords > 1) score += (matchedWords * 5);
+
+      if (score > 0) {
+        scoredProducts.push({ p, score, catName });
+      }
+    }
+  }
+
+  if (scoredProducts.length === 0) {
+    let deals = allProducts.filter(p => p.promo);
+    deals.sort((a, b) => (Math.abs(b.vsAvgPct||0) - Math.abs(a.vsAvgPct||0)));
+    scoredProducts = deals.slice(0, 30).map(p => ({ p, score: 1, catName: 'מבצע' }));
+  }
+
+  scoredProducts.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const ea = a.p.effectivePrice ?? a.p.price;
+    const eb = b.p.effectivePrice ?? b.p.price;
+    return ea - eb;
+  });
+
+  const topResults = scoredProducts.slice(0, 60);
+
+  const lines = topResults.map(({ p, catName }) => {
+    const eff = p.effectivePrice ?? p.price;
+    const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
+    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0,50)}]` : '';
+    const p100 = p.pricePer100 ? ` | ₪${p.pricePer100}/100${p.unitType==='ml'?'מל':'ג'}` : '';
+    
+    return `• [קטגוריה: ${catName}] ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${p100}`;
+  }).join('\n');
+
+  lastChatContext = lines;
+  return lines;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const query = input.value.trim();
+  if (!query) return;
+  if (GEMINI_KEY === 'YOUR_GEMINI_API_KEY') {
+    addChatMsg('assistant', '⚠️ יש להוסיף מפתח Gemini API בקוד (GEMINI_KEY)');
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chat-send').disabled = true;
+
+  addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+
+  const thinking = addThinking();
+  const context = buildContext(query);
+  const today = new Date().toLocaleDateString('he-IL');
+
+  const systemPrompt = `אתה עוזר קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בסופרמרקטים בגבעתיים.
+הסניפים: שלי שביט, שופרסל אקספרס ההסתדרות, סיטי מרקט גבעתיים, גוד פארם גבעתיים.
+תאריך היום: ${today}.
+
+כללים חשובים לעונים:
+1. היה ספציפי עם מחירים וסניפים, והמלץ על ה-value for money הטוב ביותר.
+2. הבן הקשר (Context): שים לב לתגית [קטגוריה] במוצרים. אם המשתמש מדבר על ירקות טריים (כמו עגבניות), סנן החוצה לגמרי מוצרי שימורים או רטבים והצג רק מה שמתאים.
+3. התאמה חלופית: אם המשתמש מחפש משהו כללי (כמו "מוצרלה"), חפש ברשימה את כל תתי-הסוגים (מגורדת, פרוסות, כדורים) והצע לו אפשרויות רלוונטיות.
+4. השתמש בשקלים (₪), ענה בתשובות קצרות וברורות. אל תמציא מחירים או מוצרים שאינם ברשימה מטה.
+
+נתוני המוצרים הרלוונטיים (ממוינים לפי התאמה):
+${context}`;
+
+  chatHistory.push({ role: 'user', parts: [{ text: query }] });
+
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: chatHistory,
+        generationConfig: { maxOutputTokens: 400, temperature: 0.3 }
+      })
+    });
+
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error?.message || "שגיאת API כללית");
+    }
+
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    thinking.remove();
+
+    if (reply) {
+      const safeReply = reply.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      
+      const formatted = safeReply
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^[•\-] /gm, '• ')
+        .replace(/\n/g, '<br>');
+        
+      addChatMsg('assistant', formatted);
+      
+      chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+      if (chatHistory.length > 12) chatHistory.splice(0, 2);
+    } else {
+      chatHistory.pop();
+      addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה, נסה שוב');
+    }
+  } catch (e) {
+    chatHistory.pop();
+    thinking.remove();
+    addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
+  }
+
+  document.getElementById('chat-send').disabled = false;
+  document.getElementById('chat-input').focus();
+}
+
+boot();
+</script>
+
 <div id="chat-overlay" onclick="if(event.target===this)toggleChat()" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.3)"></div>
 
 <div id="chat-panel" style="
@@ -1769,10 +1964,9 @@ boot();
   height:72vh;max-height:600px;
   background:var(--bg);border-radius:20px 20px 0 0;
   box-shadow:0 -4px 32px rgba(0,0,0,0.15);
-  z-index:901;display:none;flex-direction:column;
+  z-index:901;flex-direction:column;
   font-family:inherit;
 ">
-  <!-- Handle -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
     <div style="display:flex;align-items:center;gap:8px">
       <span style="font-size:1.3rem">🤖</span>
@@ -1784,7 +1978,6 @@ boot();
     <button onclick="toggleChat()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text3);padding:4px">✕</button>
   </div>
 
-  <!-- Messages -->
   <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
     <div class="chat-msg chat-assistant">
       <div class="chat-bubble">
@@ -1799,7 +1992,6 @@ boot();
     </div>
   </div>
 
-  <!-- Suggestions -->
   <div id="chat-suggestions" style="padding:6px 16px;display:flex;gap:6px;overflow-x:auto;flex-shrink:0;scrollbar-width:none">
     <button class="chat-chip" onclick="sendChatMsg('איזו מוצרלה הכי משתלמת?')">🧀 מוצרלה</button>
     <button class="chat-chip" onclick="sendChatMsg('מה במבצע עכשיו?')">🔥 מבצעים</button>
@@ -1808,7 +2000,6 @@ boot();
     <button class="chat-chip" onclick="sendChatMsg('מה הכי שווה לקנות היום?')">⭐ המלצות</button>
   </div>
 
-  <!-- Input -->
   <div style="padding:10px 16px 16px;flex-shrink:0;border-top:1px solid var(--border)">
     <div style="display:flex;gap:8px;align-items:flex-end">
       <textarea id="chat-input" placeholder="שאל שאלה על מחירים..." rows="1"
@@ -1828,6 +2019,7 @@ boot();
       מופעל ע"י Gemini · הנתונים מהסניפים בגבעתיים
     </div>
   </div>
+</div>
 
 </body>
 </html>
