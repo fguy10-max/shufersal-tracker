@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>מחירוסקופ</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-<script>var vConsole = new window.VConsole();</script>
 <style>
 :root {
   --bg: #ffffff;
@@ -528,7 +526,40 @@ header { height:52px; border-bottom:1px solid var(--border); display:flex; align
 
 <script>
 const DATA_URL = 'https://raw.githubusercontent.com/fguy10-max/shufersal-tracker/main/shufersal_prices.json';
-const CAT = { dairy:{i:'🥛',l:'חלב ומוצרי חלב'}, eggs:{i:'🥚',l:'ביצים'}, poultry:{i:'🍗',l:'עוף'}, meat:{i:'🥩',l:'בשר'}, fish:{i:'🐟',l:'דגים ופירות ים'}, produce:{i:'🥦',l:'ירקות ופירות'}, bakery:{i:'🍞',l:'לחם ומאפים'}, cakes:{i:'🎂',l:'עוגות ומאפים מתוקים'}, cookies:{i:'🍪',l:'עוגיות וקרקרים'}, chocolate:{i:'🍫',l:'שוקולד'}, candy:{i:'🍬',l:'ממתקים'}, snacks:{i:'🍿',l:'חטיפים'}, nuts:{i:'🥜',l:'אגוזים וגרעינים'}, beverages:{i:'🧃',l:'משקאות'}, coffee:{i:'☕',l:'קפה'}, tea:{i:'🍵',l:'תה'}, condiments:{i:'🫒',l:'שמנים ורטבים'}, grains:{i:'🌾',l:'דגנים וקטניות'}, breakfast:{i:'🥣',l:'ארוחת בוקר'}, spices:{i:'🌶️',l:'תבלינים'}, pantry:{i:'🥫',l:'שימורים ומזון ארוז'}, frozen:{i:'❄️',l:'מוצרים קפואים'}, alcohol:{i:'🍺',l:'אלכוהול'}, hygiene:{i:'🧴',l:'טיפוח וגהות'}, cosmetics:{i:'💄',l:'קוסמטיקה ויופי'}, pharmacy:{i:'💊',l:'בריאות ורפואה'}, cleaning:{i:'🧹',l:'ניקיון הבית'}, baby:{i:'👶',l:'תינוקות'}, pets:{i:'🐾',l:'חיות מחמד'}, household:{i:'🏠',l:'כלי בית'}, other:{i:'📦',l:'אחר'}};
+
+const CAT = {
+  dairy:    {i:'🥛',l:'חלב ומוצרי חלב'},
+  eggs:     {i:'🥚',l:'ביצים'},
+  poultry:  {i:'🍗',l:'עוף'},
+  meat:     {i:'🥩',l:'בשר'},
+  fish:     {i:'🐟',l:'דגים ופירות ים'},
+  produce:  {i:'🥦',l:'ירקות ופירות'},
+  bakery:   {i:'🍞',l:'לחם ומאפים'},
+  cakes:    {i:'🎂',l:'עוגות ומאפים מתוקים'},
+  cookies:  {i:'🍪',l:'עוגיות וקרקרים'},
+  chocolate:{i:'🍫',l:'שוקולד'},
+  candy:    {i:'🍬',l:'ממתקים'},
+  snacks:   {i:'🍿',l:'חטיפים'},
+  nuts:     {i:'🥜',l:'אגוזים וגרעינים'},
+  beverages:{i:'🧃',l:'משקאות'},
+  coffee:   {i:'☕',l:'קפה'},
+  tea:      {i:'🍵',l:'תה'},
+  condiments:{i:'🫒',l:'שמנים ורטבים'},
+  grains:   {i:'🌾',l:'דגנים וקטניות'},
+  breakfast:{i:'🥣',l:'ארוחת בוקר'},
+  spices:   {i:'🌶️',l:'תבלינים'},
+  pantry:   {i:'🥫',l:'שימורים ומזון ארוז'},
+  frozen:   {i:'❄️',l:'מוצרים קפואים'},
+  alcohol:  {i:'🍺',l:'אלכוהול'},
+  hygiene:  {i:'🧴',l:'טיפוח וגהות'},
+  cosmetics:{i:'💄',l:'קוסמטיקה ויופי'},
+  pharmacy: {i:'💊',l:'בריאות ורפואה'},
+  cleaning: {i:'🧹',l:'ניקיון הבית'},
+  baby:     {i:'👶',l:'תינוקות'},
+  pets:     {i:'🐾',l:'חיות מחמד'},
+  household:{i:'🏠',l:'כלי בית'},
+  other:    {i:'📦',l:'אחר'},
+};
 const SC = { sheli_shabit:'#1d4ed8', express_histadrut:'#15803d', citymarket_givataim:'#b45309', goodpharm_givataim:'#9333ea' };
 const DEFAULT_HIDDEN = ['alcohol','baby','pets','other'];
 
@@ -579,10 +610,10 @@ function rebuildProducts() {
 }
 
 function init() {
+  const d = new Date(DATA.generatedAt);
   const total = STORES.reduce((s,st)=>s+st.totalProducts,0);
   const promos = STORES.reduce((s,st)=>s+st.totalWithPromo,0);
   const shared = Object.values(compMap).filter(d=>Object.keys(d.prices).length>=2).length;
-  
   document.getElementById('s-total').textContent = total.toLocaleString();
   document.getElementById('s-promos').textContent = promos;
   document.getElementById('s-compare').textContent = shared.toLocaleString();
@@ -607,8 +638,17 @@ let curStore = 'all';
 
 function buildStoreFilter(){
   const el = document.getElementById('store-filter');
-  el.innerHTML = `<button class="store-btn on" id="sf-all" onclick="setStore('all')" style="background:var(--text);border-color:var(--text)">🏠 כל הסניפים</button>` + 
-    STORES.map(s=>`<button class="store-btn" id="sf-${s.id}" onclick="setStore('${s.id}')" data-color="${SC[s.id]||'#999'}"><div style="width:7px;height:7px;border-radius:50%;background:${SC[s.id]||'#999'}"></div>${s.short}</button>`).join('');
+  el.innerHTML = `
+    <button class="store-btn on" id="sf-all" onclick="setStore('all')"
+      style="background:var(--text);border-color:var(--text)">
+      🏠 כל הסניפים
+    </button>
+    ${STORES.map(s=>`
+      <button class="store-btn" id="sf-${s.id}" onclick="setStore('${s.id}')"
+        data-color="${SC[s.id]||'#999'}">
+        <div style="width:7px;height:7px;border-radius:50%;background:${SC[s.id]||'#999'}"></div>
+        ${s.short}
+      </button>`).join('')}`;
 }
 
 function setStore(storeId){
@@ -617,10 +657,19 @@ function setStore(storeId){
   const activeBtn = document.getElementById('sf-'+storeId);
   if(activeBtn){
     activeBtn.classList.add('on');
-    if(storeId==='all'){ activeBtn.style.background='var(--text)'; activeBtn.style.borderColor='var(--text)'; } 
-    else { const col = SC[storeId]||'#999'; activeBtn.style.background=col; activeBtn.style.borderColor=col; }
+    if(storeId==='all'){
+      activeBtn.style.background='var(--text)';
+      activeBtn.style.borderColor='var(--text)';
+    } else {
+      const col = SC[storeId]||'#999';
+      activeBtn.style.background=col;
+      activeBtn.style.borderColor=col;
+    }
   }
-  document.querySelectorAll('.store-btn:not(.on)').forEach(b=>{ b.style.background='var(--bg)'; b.style.borderColor='var(--border)'; });
+  document.querySelectorAll('.store-btn:not(.on)').forEach(b=>{
+    b.style.background='var(--bg)';
+    b.style.borderColor='var(--border)';
+  });
   render();
 }
 
@@ -630,28 +679,45 @@ function buildSidebar() {
   h += mkCatItem('all','🏠','הכל',allProducts.length,true);
   for(const [cat,items] of Object.entries(catMap).sort((a,b)=>b[1].length-a[1].length)) {
     const m = CAT[cat]||{i:'📦',l:cat};
-    h += mkCatItem(cat, m.i, m.l, items.length, false, items.filter(p=>p.promo).length, items.filter(p=>p.vsAvgPct<-5).length);
+    const deals = items.filter(p=>p.promo).length;
+    const cheap = items.filter(p=>p.vsAvgPct<-5).length;
+    h += mkCatItem(cat, m.i, m.l, items.length, false, deals, cheap);
   }
   el.innerHTML = h;
 }
 
 function mkCatItem(id,icon,label,count,active,deals=0,cheap=0) {
-  const badge = deals>0 ? `<span class="cat-badge cb-deal">${deals}</span>` : cheap>0 ? `<span class="cat-badge cb-cheap">${cheap}</span>` : `<span class="cat-count">${count}</span>`;
-  return `<div class="cat-item${active?' active':''}" onclick="selectCat('${id}',this)"><span class="cat-icon">${icon}</span><span class="cat-label">${label}</span>${badge}</div>`;
+  const badge = deals>0 ? `<span class="cat-badge cb-deal">${deals}</span>` :
+                cheap>0 ? `<span class="cat-badge cb-cheap">${cheap}</span>` :
+                          `<span class="cat-count">${count}</span>`;
+  return `<div class="cat-item${active?' active':''}" onclick="selectCat('${id}',this)">
+    <span class="cat-icon">${icon}</span>
+    <span class="cat-label">${label}</span>${badge}
+  </div>`;
 }
 
 function selectCat(id,el) {
   curCat=id;
   document.querySelectorAll('.cat-item').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('page-title').textContent = id==='all' ? 'כל המוצרים' : (CAT[id]||{l:id}).l;
+  const m = id==='all' ? {i:'',l:'כל המוצרים'} : (CAT[id]||{i:'',l:id});
+  document.getElementById('page-title').textContent = m.l;
   document.getElementById('search').value='';
   render();
 }
 
-function setFilter(f,btn) { curFilter=f; document.querySelectorAll('.fchip').forEach(c=>{ c.className='fchip'; }); btn.classList.add(f==='all'?'on':'on-'+f); render(); }
-// השלמת פונקציית setView שכיסתה פונקציה אחרת
-function setView(v) { curView=v; ['grid','list'].forEach(x=>{ document.getElementById('vbtn-'+x).classList.toggle('on',x===v); }); render(); }
+function setFilter(f,btn) {
+  curFilter=f;
+  document.querySelectorAll('.fchip').forEach(c=>{ c.className='fchip'; });
+  btn.classList.add(f==='all'?'on':'on-'+f);
+  render();
+}
+
+function setView(v) {
+  curView=v;
+  ['grid','list'].forEach(x=>{ document.getElementById('vbtn-'+x).classList.toggle('on',x===v); });
+  render();
+}
 
 function getProducts() {
   let list = curCat==='all' ? [...allProducts] : [...(catMap[curCat]||[])];
@@ -696,8 +762,10 @@ function getProducts() {
 
 function render() {
   const products = getProducts();
-  const area = document.getElementById('grid-area'), empty = document.getElementById('empty');
-  document.getElementById('results-meta').textContent = products.length ? `${Math.min(products.length,300).toLocaleString()} מתוך ${products.length.toLocaleString()}` : '';
+  const area = document.getElementById('grid-area');
+  const empty = document.getElementById('empty');
+  document.getElementById('results-meta').textContent =
+    products.length ? `${Math.min(products.length,300).toLocaleString()} מתוך ${products.length.toLocaleString()}` : '';
   if(!products.length) { area.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
   const isList = curView==='list';
@@ -709,27 +777,119 @@ function mkCard(p,i,isList) {
   const hasDeal=!!p.promo, hasDrop=p.changePct!=null && p.changePct<-3 && p.prevPrice !== p.price;
   const pp0 = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
   const effP0 = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
+  const effVsAvg = p.vsAvgPct!=null ? Math.round((effP0/p.price - 1 + p.vsAvgPct/100) * 100) : p.vsAvgPct;
   const hasCompare=p._prices&&Object.keys(p._prices).length>=2;
-  const isCheap = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (hasCompare && effP0 === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1);
+  const isCheapVsAvg = (p.vsAvgPct!=null && p.vsAvgPct<-5) || (pp0 && effVsAvg < -5);
+  const isCheapVsStores = hasCompare && p._prices && effP0 === Math.min(...Object.values(p._prices)) && Object.values(p._prices).length > 1;
+  const isCheap = isCheapVsAvg || isCheapVsStores;
   const isW=watching.has(p.barcode), inC=cart.some(c=>c.barcode===p.barcode);
-  const delay=`animation-delay:${Math.min(i,15)*0.03}s`, col=SC[p._sid]||'#999';
+  const delay=`animation-delay:${Math.min(i,15)*0.03}s`;
+  const col=SC[p._sid]||'#999';
+
   const escapedName = p.name.replace(/'/g,"\\'").replace(/"/g,"&quot;");
 
-  const tags = [hasDrop?'<span class="tag tag-drop">📉 ירד</span>':'', hasDeal?'<span class="tag tag-deal">🔥 מבצע</span>':'', isCheap?'<span class="tag tag-cheap">💰 זול</span>':''].join('');
-  const currentPrice = p.effectivePrice ?? pp0?.unitPrice ?? p.price;
+  const tags = [
+    hasDrop ? '<span class="tag tag-drop">📉 ירד</span>' : '',
+    hasDeal ? '<span class="tag tag-deal">🔥 מבצע</span>' : '',
+    isCheap ? '<span class="tag tag-cheap">💰 זול</span>' : '',
+  ].filter(Boolean).join('');
 
-  const storeComp = hasCompare ? `<div class="store-compare">${STORES.map(s=>{
-    const sp = p._prices[s.id], vals = Object.values(p._prices);
-    return `<div class="sc-row"><div class="sc-dot" style="background:${SC[s.id]}"></div><div class="sc-name">${s.short}</div><div class="sc-price ${sp===Math.min(...vals)?'sc-best':sp===Math.max(...vals)&&Math.min(...vals)!==Math.max(...vals)?'sc-worst':''}">${sp!==undefined?'₪'+sp.toFixed(2):'—'}</div></div>`;
-  }).join('')}</div>` : '';
+  const promoData = hasDeal ? parsePromoPrice(p.promo, p.price) : null;
+  const currentPrice = promoData ? (p.effectivePrice ?? promoData.unitPrice) : p.price;
+  
+  const showCrossedRegular = promoData && (p.price > currentPrice);
+  const showCrossedPrev = !showCrossedRegular && (p.prevPrice && p.prevPrice > p.price);
 
-  if(isList) return `<div class="list-card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')"><div><div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%"></div><span style="color:${col}">${p._sname}</span></div><div class="card-name">${p.name}</div>${tags?`<div class="card-tags">${tags}</div>`:''}${p.promo?`<div style="background:#fffbeb;border-right:3px solid #f59e0b;padding:5px 8px;border-radius:0 5px 5px 0;font-size:11px;color:#92400e;margin-top:5px">🔥 ${p.promo}</div>`:''}${storeComp}</div><div style="text-align:left;flex-shrink:0"><div style="display:flex;align-items:baseline;gap:6px"><div class="price-main" style="${hasDeal?'color:var(--green)':''}">₪${currentPrice.toFixed(2)}</div></div><div class="card-actions" style="margin-top:6px"><button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button><button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button></div></div></div>`;
+  const storeComp = hasCompare ? `
+    <div class="store-compare">
+      ${STORES.map(s=>{
+        const sp = p._prices[s.id];
+        const vals = Object.values(p._prices);
+        const minP = Math.min(...vals), maxP = Math.max(...vals);
+        const isBest = sp!==undefined && sp===minP;
+        const isWorst = sp!==undefined && sp===maxP && minP!==maxP;
+        return `<div class="sc-row">
+          <div class="sc-dot" style="background:${SC[s.id]}"></div>
+          <div class="sc-name">${s.short}</div>
+          ${sp!==undefined
+            ? `<div class="sc-price ${isBest?'sc-best':isWorst?'sc-worst':''}">₪${sp.toFixed(2)}</div>
+               ${isBest&&minP!==maxP?`<div class="sc-diff">−₪${(maxP-sp).toFixed(1)}</div>`:''}`
+            : `<div class="sc-price sc-na">—</div>`}
+        </div>`;
+      }).join('')}
+    </div>` : '';
 
-  return `<div class="card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')"><div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%"></div><span style="color:${col}">${p._sname}</span></div><div class="card-name">${p.name}</div><div class="card-brand">${p.brand||''}</div><div class="card-price"><div class="price-main" style="${hasDeal?'color:var(--green)':''}">₪${currentPrice.toFixed(2)}</div></div>${tags?`<div class="card-tags">${tags}</div>`:''}${storeComp}<div class="card-footer"><span class="card-date">${p.updatedAt?.substring(0,10)||''}</span><div class="card-actions"><button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button><button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button></div></div></div>`;
+  const footer = `
+    <div class="card-footer">
+      <span class="card-date">${p.updatedAt?.substring(0,10)||''}</span>
+      <div class="card-actions">
+        <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
+        <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}${inC?' ':' '}רשימה</button>
+      </div>
+    </div>`;
+
+  if(isList) return `
+    <div class="list-card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')">
+      <div>
+        <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col}">${p._sname}</span></div>
+        <div class="card-name">${p.name}</div>
+        ${tags ? `<div class="card-tags" style="margin-top:4px">${tags}</div>` : ''}
+        ${promoData ? `<div style="background:#fffbeb;border-right:3px solid #f59e0b;padding:5px 8px;border-radius:0 5px 5px 0;font-size:11px;color:#92400e;font-weight:500;margin-top:5px">🔥 ${p.promo}</div>` : ''}
+        ${storeComp}
+      </div>
+      <div style="text-align:left;flex-shrink:0">
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <div class="price-main" style="${promoData?'color:var(--green)':''}">₪${currentPrice.toFixed(2)}</div>
+          ${showCrossedRegular ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
+            showCrossedPrev ? `<div style="font-size:0.8rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
+        </div>
+        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}</div>` :
+          p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
+        <div class="card-actions" style="margin-top:6px">
+          <button class="action-btn ${isW?'on-watch':''}" onclick="event.stopPropagation();tw('${p.barcode}',this)">${isW?'⭐':'☆'}</button>
+          <button class="action-btn ${inC?'on-cart':''}" onclick="event.stopPropagation();tc('${p.barcode}','${escapedName}',${p.price},'${p._sid}',this)">${inC?'✓':'+'}</button>
+        </div>
+      </div>
+    </div>`;
+
+  return `
+    <div class="card" style="${delay}" onclick="openProduct('${p.barcode}','${p._sid}')">
+      <div class="card-store"><div class="sc-dot" style="background:${col};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="color:${col};font-size:0.7rem;font-weight:600">${p._sname}</span></div>
+      <div class="card-name">${p.name}</div>
+      <div class="card-brand">${p.brand||''}</div>
+      <div class="card-price">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <div class="price-main" style="${promoData?'color:var(--green)':''}">
+            ₪${currentPrice.toFixed(2)}
+          </div>
+          ${showCrossedRegular ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.price.toFixed(2)}</div>` :
+            showCrossedPrev ? `<div style="font-size:0.9rem;color:var(--text3);text-decoration:line-through">₪${p.prevPrice}</div>` : ''}
+        </div>
+        ${p.pricePer100 ? `<div class="price-unit">₪${p.pricePer100} ל-100 ${p.unitType==='ml'?'מ"ל':'גרם'}${p.vsAvgPct!=null ? (' <span style="color:'+(p.vsAvgPct<0?'var(--green)':'var(--red)')+'">'+p.vsAvgPct+'%</span>') : ''}</div>` :
+          p.unit ? `<div class="price-unit">${p.unit}</div>` : ''}
+        ${promoData ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🔥 ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` :
+          hasDeal ? `<div class="tag tag-deal" style="margin-top:4px;display:inline-block">🏷️ ${p.promo.length>35?p.promo.slice(0,35)+'…':p.promo}</div>` : ''}
+      </div>
+      ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+      ${storeComp}
+      ${footer}
+    </div>`;
 }
 
-function tw(bc,btn) { if(watching.has(bc)){watching.delete(bc);btn.textContent='☆';btn.classList.remove('on-watch');}else{watching.add(bc);btn.textContent='⭐';btn.classList.add('on-watch');} localStorage.setItem('w',JSON.stringify([...watching])); document.getElementById('s-watch').textContent=watching.size; }
-function tc(bc,name,price,sid,btn) { const idx=cart.findIndex(c=>c.barcode===bc); if(idx>=0){cart.splice(idx,1);btn.textContent='+';btn.classList.remove('on-cart');}else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓';btn.classList.add('on-cart');} saveCart(); }
+function tw(bc,btn) {
+  if(watching.has(bc)){watching.delete(bc);btn.textContent='☆';btn.classList.remove('on-watch');}
+  else{watching.add(bc);btn.textContent='⭐';btn.classList.add('on-watch');}
+  localStorage.setItem('w',JSON.stringify([...watching]));
+  document.getElementById('s-watch').textContent=watching.size;
+}
+
+function tc(bc,name,price,sid,btn) {
+  const idx=cart.findIndex(c=>c.barcode===bc);
+  if(idx>=0){cart.splice(idx,1);btn.textContent='+ רשימה';btn.classList.remove('on-cart');}
+  else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓ רשימה';btn.classList.add('on-cart');}
+  saveCart();
+}
+
 function saveCart(){localStorage.setItem('c',JSON.stringify(cart));updateBadge();}
 function updateBadge(){const b=document.getElementById('cart-badge');b.style.display=cart.length?'inline':'none';b.textContent=cart.length;}
 
@@ -739,57 +899,417 @@ function closeCart(){document.getElementById('cart-bg').classList.remove('open')
 function renderCart() {
   const body=document.getElementById('cart-body'), foot=document.getElementById('cart-foot');
   if(!cart.length){body.innerHTML='<div class="empty-state"><div class="ei">🛒</div><p>הרשימה ריקה</p></div>';foot.innerHTML='';return;}
-  body.innerHTML=cart.map((item,idx)=>`<div class="cart-row"><div class="cart-info"><div class="cart-name">${item.name}</div><div class="cart-store">${STORES.find(s=>s.id===item.storeId)?.short||''}</div><div class="cart-qty-ctrl"><button class="qty-btn" onclick="chQty(${idx},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="chQty(${idx},1)">+</button></div></div><div style="display:flex;align-items:center;gap:8px"><div class="cart-price">₪${(item.price*item.qty).toFixed(2)}</div><button class="cart-del" onclick="rmCart(${idx})">✕</button></div></div>`).join('');
-  foot.innerHTML=`<div style="padding:10px 0;font-weight:700;font-size:1.1rem;border-top:1px solid var(--border)">סה"כ: ₪${cart.reduce((s,c)=>s+c.price*(c.qty||1),0).toFixed(2)}</div>`;
+
+  body.innerHTML=cart.map((item,idx)=>`
+    <div class="cart-row">
+      <div class="cart-info">
+        <div class="cart-name">${item.name}</div>
+        <div class="cart-store">${STORES.find(s=>s.id===item.storeId)?.short||''}</div>
+        <div class="cart-qty-ctrl">
+          <button class="qty-btn" onclick="chQty(${idx},-1)">−</button>
+          <span class="qty-num">${item.qty}</span>
+          <button class="qty-btn" onclick="chQty(${idx},1)">+</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="cart-price">₪${(item.price*item.qty).toFixed(2)}</div>
+        <button class="cart-del" onclick="rmCart(${idx})">✕</button>
+      </div>
+    </div>`).join('');
+
+  const totalQty=cart.reduce((s,c)=>s+(c.qty||1),0);
+  const storeTotals={}, storeFound={}, storeMissing={};
+  for(const s of STORES){storeTotals[s.id]=0;storeFound[s.id]=0;storeMissing[s.id]=0;}
+  for(const item of cart) {
+    const prices=compMap[item.barcode]?.prices||{[item.storeId]:item.price};
+    for(const s of STORES) {
+      if(prices[s.id]!==undefined){storeTotals[s.id]+=prices[s.id]*(item.qty||1);storeFound[s.id]+=(item.qty||1);}
+      else storeMissing[s.id]+=(item.qty||1);
+    }
+  }
+  const myTotal=cart.reduce((s,c)=>s+c.price*(c.qty||1),0);
+  const validStores=STORES.filter(s=>storeFound[s.id]>=totalQty/2);
+  const bestStore=validStores.length?validStores.reduce((b,s)=>storeTotals[s.id]<storeTotals[b.id]?s:b,validStores[0]):null;
+
+  foot.innerHTML=`
+    <div class="compare-box">
+      <h3>עלות הסל בסניפים</h3>
+      ${STORES.map(s=>{
+        const found=storeFound[s.id], missing=storeMissing[s.id];
+        const isBest=bestStore&&s.id===bestStore.id;
+        return `<div class="compare-row">
+          <div class="compare-left">
+            <div class="store-dot" style="background:${SC[s.id]}"></div>
+            <div>
+              <div class="compare-name">${s.short}</div>
+              <div class="compare-items ${missing>0?'warn':''}">${found}/${totalQty} פריטים${missing>0?` · ${missing} חסרים`:''}</div>
+            </div>
+          </div>
+          <div class="compare-price ${isBest?'best':''}">₪${storeTotals[s.id].toFixed(2)}</div>
+        </div>`;
+      }).join('')}
+      ${bestStore?`<div class="winner-row">🏆 הכי זול: ${bestStore.short}
+        ${validStores.length>1?' · חסכון ₪'+(Math.max(...validStores.map(s=>storeTotals[s.id]))-storeTotals[bestStore.id]).toFixed(2):''}
+      </div>`:''}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;color:var(--text2)">
+      <span>${totalQty} פריטים · ₪${myTotal.toFixed(2)}</span>
+      <button onclick="cart=[];saveCart();renderCart();render()" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:0.78rem">נקה</button>
+    </div>`;
 }
+
 function chQty(idx,d){cart[idx].qty=Math.max(1,(cart[idx].qty||1)+d);saveCart();renderCart();}
 function rmCart(idx){cart.splice(idx,1);saveCart();renderCart();render();}
 
+function searchSimilar(name) {
+  closeModal();
+  curCat = 'all';
+  document.querySelectorAll('.cat-item').forEach(c=>c.classList.remove('active'));
+  document.querySelector('.cat-item').classList.add('active');
+  document.getElementById('page-title').textContent = 'כל המוצרים';
+  
+  const terms = name
+    .replace(/\d+[%גרםמ"לקגליטר]+/g, '')  
+    .replace(/['"]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(w => w.length > 1)
+    .slice(0, 3)
+    .join(' ');
+  document.getElementById('search').value = terms;
+  render();
+  setTimeout(() => {
+    document.getElementById('main').scrollTo({top:0, behavior:'smooth'});
+  }, 100);
+}
+
 function openProduct(bc,sid) {
   const bg=document.getElementById('modal-bg'), mc=document.getElementById('modal-content');
-  let mainP=null; for(const store of STORES) for(const items of Object.values(store.categories||{})) { const f=items.find(p=>p.barcode===bc); if(f&&store.id===sid){mainP={...f,_sname:store.short,_sid:sid};break;} }
-  if(!mainP) return;
-  const prices=compMap[bc]?.prices||{[sid]:mainP.price}, vals=Object.values(prices);
-  mc.innerHTML=`<div class="modal-drag"></div><div class="modal-title">${mainP.name}</div><div class="modal-brand">${mainP.brand||''}</div><table class="compare-tbl" style="width:100%;margin-top:12px">${STORES.map(s=>`<tr><td>${s.short}</td><td>${prices[s.id]?'₪'+prices[s.id].toFixed(2):'—'}</td></tr>`).join('')}</table>`;
+  let mainP=null;
+  for(const store of STORES) for(const items of Object.values(store.categories||{})) {
+    const f=items.find(p=>p.barcode===bc);
+    if(f&&store.id===sid){mainP={...f,_sname:store.short,_sid:sid};break;}
+    if(f&&!mainP)mainP={...f,_sname:store.short,_sid:store.id};
+  }
+  if(mainP?.promo && ['סיבוס','SBOX','תו זהב','ח"ע','ח.ע','קופון ח'].some(w => mainP.promo.includes(w))) {
+    mainP.promo = null; mainP.promoPrice = null;
+  }
+  if(!mainP)return;
+  const prices=compMap[bc]?.prices||{[sid]:mainP.price};
+  const vals=Object.values(prices), minP=Math.min(...vals), maxP=Math.max(...vals);
+  const isW=watching.has(bc), inC=cart.some(c=>c.barcode===bc);
+
+  const escapedName = mainP.name.replace(/'/g,"\\'").replace(/"/g,"&quot;");
+
+  mc.innerHTML=`
+    <div class="modal-drag"></div>
+    <div class="modal-title">${mainP.name}</div>
+    <div class="modal-brand">${mainP.brand||''} ${mainP.unit ? '· '+mainP.unit : ''}</div>
+
+    ${Object.keys(prices).length>=2?`
+    <div class="modal-sec">
+      <div class="modal-sec-label">השוואת סניפים</div>
+      <table class="compare-tbl">
+        <thead><tr><th>סניף</th><th>מחיר</th><th></th></tr></thead>
+        <tbody>
+          ${STORES.map(s=>{
+            const sp=prices[s.id];
+            const isBest=sp!==undefined&&sp===minP;
+            return `<tr${isBest?' class="best"':''}>
+              <td><div class="tbl-store"><div class="store-dot" style="background:${SC[s.id]}"></div>${s.short}</div></td>
+              <td class="tbl-price ${isBest?'tbl-best':''}">${sp!==undefined?'₪'+sp:'—'}</td>
+              <td style="font-size:0.72rem;color:var(--text3)">${sp===undefined?'לא נמצא':isBest&&minP!==maxP?'✓ הכי זול':sp===maxP&&minP!==maxP?'+₪'+(sp-minP).toFixed(1):'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`:''}
+
+    ${mainP.pricePer100?`
+    <div class="modal-sec">
+      <div class="modal-sec-label">מחיר ל-100 ${mainP.unitType==='ml'?'מ"ל':'גרם'}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:1.5rem;font-weight:700">₪${mainP.pricePer100}</span>
+        ${mainP.vsAvgPct!=null?('<span class="norm-vs '+(mainP.vsAvgPct<0?'vs-low':'vs-high')+'">'+(mainP.vsAvgPct<0?'↓':'↑')+Math.abs(mainP.vsAvgPct)+'% מממוצע</span>'):''}
+        ${mainP.nSimilar?`<button class="similar-link" onclick="searchSimilar('${escapedName}')">🔍 ${mainP.nSimilar} מוצרים דומים</button>`:''}
+      </div>
+    </div>`:''}
+
+    ${mainP.prevPrice && mainP.changePct && Math.abs(mainP.changePct)>=3 && mainP.prevPrice !== mainP.price ?`
+    <div class="modal-sec">
+      <div class="modal-sec-label">שינוי מחיר</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:1.3rem;font-weight:700;color:var(--blue)">₪${mainP.price}</span>
+        <span style="text-decoration:line-through;color:var(--text3)">₪${mainP.prevPrice}</span>
+        <span class="tag ${mainP.changePct<0?'tag-drop':'tag-deal'}">${mainP.changePct<0?'ירד':'עלה'} ${Math.abs(mainP.changePct)}% לפני ${mainP.daysAgo} ימים</span>
+      </div>
+    </div>`:''}
+
+    ${mainP.allTimeLow != null ? `
+    <div class="modal-sec">
+      <div class="modal-sec-label">היסטוריית מחיר</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שפל כל הזמנים</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--green)">&#x20AA;${mainP.allTimeLow.toFixed(2)}</div>
+          ${(mainP.effectivePrice??mainP.promoPrice??mainP.price) <= mainP.allTimeLow ? '<div style="font-size:0.65rem;color:var(--green)">✓ עכשיו!</div>' : ''}
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">ממוצע</div>
+          <div style="font-size:1.1rem;font-weight:700">&#x20AA;${mainP.histAvg.toFixed(2)}</div>
+          ${(mainP.effectivePrice??mainP.promoPrice??mainP.price) < mainP.histAvg
+            ? '<div style="font-size:0.65rem;color:var(--green)">↓' + Math.round((mainP.histAvg-mainP.price)/mainP.histAvg*100) + '% מתחת</div>'
+            : (mainP.effectivePrice??mainP.promoPrice??mainP.price) > mainP.histAvg
+            ? '<div style="font-size:0.65rem;color:#ef4444">↑' + Math.round((mainP.price-mainP.histAvg)/mainP.histAvg*100) + '% מעל</div>'
+            : ''}
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">שיא כל הזמנים</div>
+          <div style="font-size:1.1rem;font-weight:700;color:#ef4444">&#x20AA;${mainP.allTimeHigh.toFixed(2)}</div>
+          ${(mainP.effectivePrice??mainP.promoPrice??mainP.price) >= mainP.allTimeHigh ? '<div style="font-size:0.65rem;color:#ef4444">⚠️ עכשיו!</div>' : ''}
+        </div>
+      </div>
+      ${buildSparkline(mainP.priceHistory, mainP.allTimeLow, mainP.allTimeHigh)}
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:4px">${mainP.priceHistory?.length || 0} מדידות</div>
+    </div>` : ''}
+
+    ${mainP.promo?`<div class="tag tag-deal" style="margin-bottom:12px;display:inline-block">🏷️ ${mainP.promo}</div>`:``}
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="m-watch" onclick="twModal('${bc}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${isW?'#7c3aed':' var(--border)'};background:${isW?'#f5f3ff':'var(--bg)'};color:${isW?'#7c3aed':'var(--text2)'}">
+        ${isW?'⭐ עוקב':'☆ עקוב'}
+      </button>
+      <button id="m-cart" onclick="tcModal('${bc}','${escapedName}',${mainP.price},'${sid}')" style="flex:1;padding:10px;border-radius:8px;font-family:'Heebo',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${inC?'var(--green)':'var(--border)'};background:${inC?'var(--green-light)':'var(--bg)'};color:${inC?'var(--green)':'var(--text2)'}">
+        ${inC?'✓ ברשימה':'+ הוסף'}
+      </button>
+    </div>`;
   bg.classList.add('open');
 }
+
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+function twModal(bc){
+  if(watching.has(bc))watching.delete(bc);else watching.add(bc);
+  localStorage.setItem('w',JSON.stringify([...watching]));
+  document.getElementById('s-watch').textContent=watching.size;
+  const btn=document.getElementById('m-watch');
+  const on=watching.has(bc);
+  btn.textContent=on?'⭐ עוקב':'☆ עקוב';
+  btn.style.background=on?'#f5f3ff':'var(--bg)';
+  btn.style.color=on?'#7c3aed':'var(--text2)';
+  btn.style.borderColor=on?'#7c3aed':'var(--border)';
+}
+function tcModal(bc,name,price,sid){
+  const idx=cart.findIndex(c=>c.barcode===bc);
+  const btn=document.getElementById('m-cart');
+  if(idx>=0){cart.splice(idx,1);btn.textContent='+ הוסף';btn.style.background='var(--bg)';btn.style.color='var(--text2)';btn.style.borderColor='var(--border)';}
+  else{cart.push({barcode:bc,name,price,storeId:sid,qty:1});btn.textContent='✓ ברשימה';btn.style.background='var(--green-light)';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
+  saveCart();
+}
 
 function openSettings(){buildSettings();document.getElementById('settings-bg').classList.add('open');document.getElementById('settings-drawer').classList.add('open');}
 function closeSettings(){document.getElementById('settings-bg').classList.remove('open');document.getElementById('settings-drawer').classList.remove('open');}
 function buildSettings(){
-  document.getElementById('settings-body').innerHTML=`<div style="padding:16px"><p style="font-size:0.9rem;color:var(--text3)">הגדרות סינון קטגוריות</p></div>` + Object.keys(catMap).map(c=>`<div class="sd-item" onclick="toggleCat('${c}')"><span class="sd-label">${(CAT[c]||{l:c}).l}</span><div class="checkbox ${!hiddenCats.has(c)?'on':''}" id="cb-${c}"></div></div>`).join('');
+  const allCatKeys = Object.keys({...catMap,
+    ...Object.fromEntries([...hiddenCats].map(c=>[c,[]]))
+  }).sort((a,b)=>((catMap[b]?.length||0))-(catMap[a]?.length||0));
+
+  const allVisible = allCatKeys.every(c=>!hiddenCats.has(c));
+
+  const genAt = DATA.generatedAt ? new Date(DATA.generatedAt) : null;
+  const genStr = genAt ? genAt.toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const histDays = DATA.historyDays || 0;
+  const totalProds = DATA.stores?.reduce((s,st)=>s+(st.totalProducts||0),0)||0;
+  const totalPromos = DATA.stores?.reduce((s,st)=>s+(st.totalWithPromo||0),0)||0;
+  document.getElementById('settings-body').innerHTML=
+    `<div style="background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:700;font-size:0.85rem">📊 מצב מערכת</span>
+        <span style="font-size:0.7rem;color:var(--text3)">מחירוסקופ</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div style="color:var(--text3)">עדכון אחרון</div>
+        <div style="font-weight:600;text-align:left">${genStr}</div>
+        <div style="color:var(--text3)">מוצרים</div>
+        <div style="font-weight:600;text-align:left">${totalProds.toLocaleString()}</div>
+        <div style="color:var(--text3)">מבצעים</div>
+        <div style="font-weight:600;text-align:left">${totalPromos.toLocaleString()}</div>
+        <div style="color:var(--text3)">ימי היסטוריה</div>
+        <div style="font-weight:600;text-align:left">${histDays}</div>
+      </div>
+    </div>
+    <div class="sd-toggle-all">
+      <span style="font-size:0.72rem;color:var(--text3)">קטגוריות</span>
+      <button class="sd-toggle-btn" onclick="toggleAllCats()">${allVisible?'הסר הכל':'בחר הכל'}</button>
+    </div>`+
+    allCatKeys.map(cat=>{
+      const m=CAT[cat]||{i:'📦',l:cat};
+      const on=!hiddenCats.has(cat);
+      const count=catMap[cat]?.length||0;
+      return `<div class="sd-item" onclick="toggleCat('${cat}')">
+        <span class="sd-icon">${m.i}</span>
+        <span class="sd-label">${m.l}</span>
+        <span class="sd-count">${count}</span>
+        <div class="checkbox ${on?'on':''}" id="cb-${cat}"></div>
+      </div>`;
+    }).join('');
 }
-function toggleCat(c){ if(hiddenCats.has(c)) hiddenCats.delete(c); else hiddenCats.add(c); const el=document.getElementById('cb-'+c); if(el) el.className='checkbox'+(hiddenCats.has(c)?'':' on'); }
-function applySettings(){ localStorage.setItem('h',JSON.stringify([...hiddenCats])); rebuildProducts(); buildSidebar(); closeSettings(); render(); }
 
-// Barcode Fallback Scanner
-function openScanner() { const bc = prompt('הכנס ברקוד ידנית:'); if(bc) { document.getElementById('search').value=bc; render(); } }
+function toggleCat(cat){
+  if(hiddenCats.has(cat)) hiddenCats.delete(cat);
+  else hiddenCats.add(cat);
+  const el=document.getElementById('cb-'+cat);
+  if(el) el.className='checkbox'+(hiddenCats.has(cat)?'':' on');
+  const allCatKeys=Object.keys({...catMap,...Object.fromEntries([...hiddenCats].map(c=>[c,[]]))});
+  const allVisible=allCatKeys.every(c=>!hiddenCats.has(c));
+  const btn=document.querySelector('.sd-toggle-btn');
+  if(btn) btn.textContent=allVisible?'הסר הכל':'בחר הכל';
+}
+
+function toggleAllCats(){
+  const allCatKeys=Object.keys({...catMap,...Object.fromEntries([...hiddenCats].map(c=>[c,[]]))});
+  const allVisible=allCatKeys.every(c=>!hiddenCats.has(c));
+  if(allVisible){ allCatKeys.forEach(c=>hiddenCats.add(c)); }
+  else { hiddenCats.clear(); }
+  buildSettings();
+}
+function applySettings(){
+  localStorage.setItem('h',JSON.stringify([...hiddenCats]));
+  rebuildProducts();buildSidebar();closeSettings();render();
+}
+
+let scannerStream = null;
+let scannerInterval = null;
+
+async function openScanner() {
+  const modal = document.getElementById('scanner-modal');
+  const video = document.getElementById('scanner-video');
+  const btn   = document.getElementById('scan-btn');
+
+  if (!('BarcodeDetector' in window)) {
+    const bc = prompt('הכניסו מספר ברקוד ידנית:');
+    if(bc) searchByBarcode(bc.trim());
+    return;
+  }
+
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:720} }
+    });
+    video.srcObject = scannerStream;
+    modal.classList.add('open');
+    btn.classList.add('active');
+
+    const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e'] });
+
+    scannerInterval = setInterval(async () => {
+      if(video.readyState === video.HAVE_ENOUGH_DATA) {
+        try {
+          const barcodes = await detector.detect(video);
+          if(barcodes.length > 0) {
+            const bc = barcodes[0].rawValue;
+            clearInterval(scannerInterval);
+            showScanResult(bc);
+          }
+        } catch(e) {}
+      }
+    }, 200);
+
+  } catch(e) {
+    alert('לא ניתן לגשת למצלמה. בדקו הרשאות.');
+  }
+}
+
+function closeScanner() {
+  clearInterval(scannerInterval);
+  if(scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  document.getElementById('scanner-modal').classList.remove('open');
+  document.getElementById('scanner-result').classList.remove('show');
+  document.getElementById('scan-btn').classList.remove('active');
+}
+
+function showScanResult(barcode) {
+  const resultEl = document.getElementById('scanner-result');
+  const found = [];
+  for(const store of STORES) {
+    for(const items of Object.values(store.categories||{})) {
+      const p = items.find(item => item.barcode === barcode);
+      if(p) found.push({...p, _sid:store.id, _sname:store.short});
+    }
+  }
+
+  if(navigator.vibrate) navigator.vibrate(100);
+
+  if(!found.length) {
+    resultEl.innerHTML = `
+      <h3>ברקוד: ${barcode}</h3>
+      <div class="scanner-not-found">😕 מוצר לא נמצא במאגר</div>
+      <button onclick="closeScanner()" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--text);color:#fff;">סגור</button>`;
+  } else {
+    resultEl.innerHTML = `<h3>${found[0].name}</h3>
+      <button onclick="closeScanner();openProduct('${barcode}','${found[0]._sid}')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--text);color:#fff;">פרטים נוספים</button>`;
+  }
+  resultEl.classList.add('show');
+}
+
+function searchByBarcode(barcode) {
+  document.getElementById('search').value = barcode;
+  render();
+  document.getElementById('grid-area').scrollIntoView({behavior:'smooth'});
+}
+
+function buildSparkline(history, lo, hi) {
+  if (!history || history.length < 2) return '';
+  const range = hi - lo || 1;
+  const W = 280, H = 48, pad = 6;
+  const pts = history.map((h, i) => {
+    const x = pad + (i / (history.length - 1)) * (W - pad*2);
+    const y = H - pad - ((h.p - lo) / range) * (H - pad*2);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  const last = history[history.length-1];
+  const currY = H - pad - ((last.p - lo) / range) * (H - pad*2);
+  const cx = (pad + (W - pad*2)).toFixed(1);
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:52px;overflow:visible;display:block"><polyline points="' + pts + '" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="' + cx + '" cy="' + currY.toFixed(1) + '" r="3.5" fill="var(--blue)"/></svg>';
+}
+
+function parsePromoPrice(desc, regularPrice) {
+  if (!desc || desc.includes('🎫') || desc.includes('מעל קניה') || desc.includes('בקניה')) return null;
+  let qty = 1, unitPrice = null;
+  let m = desc.match(/(\d+)\s*ב\s*(\d+(?:[.,]\d+)?)/);
+  if (m) { qty = parseInt(m[1]); const total = parseFloat(m[2].replace(',', '.')); unitPrice = Math.round(total / qty * 100) / 100; }
+  if (!unitPrice) { m = desc.match(/ב\s*\d+\s*[-–]\s*ב\s*(\d+(?:[.,]\d+)?)/); if (m) unitPrice = parseFloat(m[1].replace(',', '.')); }
+  if (!unitPrice) { m = desc.match(/ב(\d+(?:[.,]\d+)?)\s*[-–]/); if (m) unitPrice = parseFloat(m[1].replace(',', '.')); }
+  if (!unitPrice) { m = desc.match(/ב\s*[-–.]\s*(\d+(?:[.,]\d+)?)/); if (m) unitPrice = parseFloat(m[1].replace(',', '.')); }
+  if (!unitPrice && desc.includes('1+1')) { unitPrice = Math.round(regularPrice * 50) / 100; qty = 2; }
+  if (!unitPrice) { m = desc.match(/(?:^|[\s,])(\d+(?:[.,]\d+)?)(?=\s|$)/); if (m) unitPrice = parseFloat(m[1].replace(',', '.')); }
+  if (!unitPrice || unitPrice >= regularPrice || unitPrice <= 0) return null;
+  return { unitPrice, qty, savings: Math.round((regularPrice - unitPrice) / regularPrice * 100) };
+}
 
 // ═══════════════════════════════════════════════════════════════
-// Shopping Assistant — Gemini-powered Core Code
+// Shopping Assistant — Gemini-powered 
 // ═══════════════════════════════════════════════════════════════
-const GEMINI_KEY  = 'AIzaSyC7GJahZi4hhReSgBYHIgtyYe4DKizFn5I'; 
+
+const GEMINI_KEY  = 'YOUR_API_KEY_HERE'; 
 const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY;
 const chatHistory = [];
-let lastChatContext = '';
+let lastChatContext = ''; 
 
 function toggleChat() {
   const panel   = document.getElementById('chat-panel');
   const overlay = document.getElementById('chat-overlay');
-  
-  // תיקון לוגיקת הפתיחה: בודק האם הקלאס open כבר קיים
   const isOpen  = panel.classList.contains('open');
   
   if (isOpen) {
     panel.classList.remove('open');
     overlay.classList.remove('open');
-    // הגדרת הסתרה פיזית כדי שהקליקים לא ייחסמו במובייל
     setTimeout(() => { panel.style.display = 'none'; overlay.style.display = 'none'; }, 200);
   } else {
     panel.style.display = 'flex';
     overlay.style.display = 'block';
-    // נותן לדפדפן זמן קצר להחיל את הדיספליי לפני האנימציה
     setTimeout(() => { panel.classList.add('open'); overlay.classList.add('open'); }, 10);
     document.getElementById('chat-input').focus();
   }
@@ -822,24 +1342,46 @@ function addThinking() {
 
 function buildContext(query) {
   const q = query.toLowerCase();
-  const stopWords = ['מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה','מחפש','נגמר','נגמרו','צריך','כמה','עולה','איפה','זול','הזה','הזאת','תביא','האם','אפשר','למצוא'];
-  const keywords = q.replace(/[?!.,]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w)).map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
+  
+  const stopWords = ['מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה','מחפש','נגמר','נגמרו','צריך','כמה','עולה','איפה','זול','הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','כדאי','מומלץ'];
+  
+  const keywords = q
+    .replace(/[?!.,]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.includes(w))
+    .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
 
-  if (keywords.length === 0 && lastChatContext !== '') return lastChatContext;
+  if (keywords.length === 0 && lastChatContext !== '') {
+    return lastChatContext;
+  }
 
   let scoredProducts = [];
   for (const [catId, items] of Object.entries(catMap)) {
     const catName = CAT[catId] ? CAT[catId].l : '';
     for (const p of items) {
-      let score = 0, pName = p.name.toLowerCase(), matchedWords = 0;
+      let score = 0;
+      let pName = p.name.toLowerCase();
+      let matchedWords = 0;
       for (const kw of keywords) {
-        if (pName.includes(kw)) { score += 10; matchedWords++; if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5; } 
-        else if (catName.includes(kw)) { score += 4; } 
-        else if ((p.brand || '').toLowerCase().includes(kw)) { score += 3; }
+        if (pName.includes(kw)) {
+          score += 10;
+          matchedWords++;
+          if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5; 
+        } else if (catName.includes(kw)) {
+          score += 4; 
+        } else if ((p.brand || '').toLowerCase().includes(kw)) {
+          score += 3;
+        }
       }
-      if (matchedWords > 1) score += (matchedWords * 5);
-      if (score > 0) scoredProducts.push({ p, score, catName });
+      if (matchedWords > 1) score += (matchedWords * 5); 
+      if (score > 0) {
+        scoredProducts.push({ p, score, catName });
+      }
     }
+  }
+
+  if (scoredProducts.length === 0 && lastChatContext !== '') {
+    return lastChatContext;
   }
 
   if (scoredProducts.length === 0) {
@@ -848,21 +1390,58 @@ function buildContext(query) {
     scoredProducts = deals.slice(0, 30).map(p => ({ p, score: 1, catName: 'מבצע' }));
   }
 
-  scoredProducts.sort((a, b) => b.score - a.score || (a.p.effectivePrice ?? a.p.price) - (b.p.effectivePrice ?? b.p.price));
-  lastChatContext = scoredProducts.slice(0, 60).map(({ p, catName }) => `• [קטגוריה: ${catName}] ${p.name} | ${STORES.find(s=>s.id===p._sid)?.short || p._sid} | ₪${(p.effectivePrice ?? p.price).toFixed(2)}${p.promo?` [מבצע: ${p.promo.slice(0,50)}]`:''}`).join('\n');
-  return lastChatContext;
+  scoredProducts.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const ea = a.p.effectivePrice ?? a.p.price;
+    const eb = b.p.effectivePrice ?? b.p.price;
+    return ea - eb;
+  });
+
+  const topResults = scoredProducts.slice(0, 60);
+  const lines = topResults.map(({ p, catName }) => {
+    const eff = p.effectivePrice ?? p.price;
+    const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
+    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0,50)}]` : '';
+    const p100 = p.pricePer100 ? ` | ₪${p.pricePer100}/100${p.unitType==='ml'?'מל':'ג'}` : '';
+    return `• [קטגוריה: ${catName}] ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${p100}`;
+  }).join('\n');
+
+  lastChatContext = lines;
+  return lines;
 }
 
 async function sendChat() {
-  const input = document.getElementById('chat-input'), query = input.value.trim();
+  const input = document.getElementById('chat-input');
+  const query = input.value.trim();
   if (!query) return;
-  input.value = ''; input.style.height = 'auto';
+  if (GEMINI_KEY === 'AIzaSyC7GJahZi4hhReSgBYHIgtyYe4DKizFn5I') {
+    addChatMsg('assistant', '⚠️ יש להוסיף מפתח Gemini API בקוד (GEMINI_KEY)');
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
   document.getElementById('chat-send').disabled = true;
 
   addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-  const thinking = addThinking(), context = buildContext(query), today = new Date().toLocaleDateString('he-IL');
 
-  const systemPrompt = `אתה עוזר קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בסופרמרקטים בגבעתיים.\nהסניפים: שלי שביט, שופרסל אקספרס ההסתדרות, סיטי מרקט גבעתיים, גוד פארם גבעתיים.\nתאריך היום: ${today}.\n\nכללים חשובים לעונים:\n1. היה ספציפי עם מחירים וסניפים, והמלץ על ה-value for money הטוב ביותר.\n2. הבן הקשר (Context): שים לב לתגית [קטגוריה] במוצרים. אם המשתמש מדבר על ירקות טריים (כמו עגבניות), סנן החוצה לגמרי מוצרי שימורים או רטבים והצג רק מה שמתאים.\n3. התאמה חלופית: אם המשתמש מחפש משהו כללי (כמו "מוצרלה"), חפש ברשימה את כל תתי-הסוגים (מגורדת, פרוסות, כדורים) והצע לו אפשרויות רלוונטיות.\n4. השתמש בשקלים (₪), ענה בתשובות קצרות וברורות. אל תמציא מחירים או מוצרים שאינם ברשימה מטה.\n\nנתוני המוצרים הרלוונטיים:\n${context}`;
+  const thinking = addThinking();
+  const context = buildContext(query);
+  const today = new Date().toLocaleDateString('he-IL');
+
+  const systemPrompt = `אתה עוזר קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בסופרמרקטים בגבעתיים.
+הסניפים: שלי שביט, שופרסל אקספרס ההסתדרות, סיטי מרקט גבעתיים, גוד פארם גבעתיים.
+תאריך היום: ${today}.
+
+כללים קריטיים לתשובות שלך:
+1. היה ספציפי עם מחירים וסניפים, והמלץ על ה-value for money הטוב ביותר.
+2. הבן הקשר (Context): שים לב לתגית [קטגוריה] במוצרים. אם המשתמש מדבר על ירקות טריים (כמו עגבניות), סנן החוצה לגמרי מוצרי שימורים או רטבים והצג רק מה שמתאים.
+3. התאמה חלופית: אם המשתמש מחפש משהו כללי (כמו "מוצרלה"), חפש ברשימה את כל תתי-הסוגים והצע לו אפשרויות רלוונטיות.
+4. השתמש בשקלים (₪), ענה בתשובות קצרות וברורות. אל תמציא מחירים או מוצרים שאינם ברשימה מטה.
+5. איסור מוחלט על שימוש בטבלאות (Tables) או תגיות HTML! ענה רק בטקסט פשוט ונקודות (Bullet points).
+
+נתוני המוצרים הרלוונטיים (ממוינים לפי התאמה):
+${context}`;
 
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
 
@@ -870,25 +1449,44 @@ async function sendChat() {
     const res = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt }] }, contents: chatHistory, generationConfig: { maxOutputTokens: 400, temperature: 0.3 } })
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: chatHistory,
+        generationConfig: { maxOutputTokens: 400, temperature: 0.3 }
+      })
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || "שגיאת API כללית");
+    
+    if (!res.ok) {
+      throw new Error(data.error?.message || "שגיאת API כללית");
+    }
 
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     thinking.remove();
 
     if (reply) {
-      addChatMsg('assistant', reply.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^[•\-] /gm, '• ').replace(/\n/g, '<br>'));
+      const safeReply = reply.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      
+      const formatted = safeReply
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^[•\-] /gm, '• ')
+        .replace(/\n/g, '<br>');
+        
+      addChatMsg('assistant', formatted);
+      
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
       if (chatHistory.length > 12) chatHistory.splice(0, 2);
     } else {
-      chatHistory.pop(); addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה, נסה שוב');
+      chatHistory.pop();
+      addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה מהשרת. הבוט הפסיק לייצר טקסט באמצע.');
     }
   } catch (e) {
-    chatHistory.pop(); thinking.remove(); addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
+    chatHistory.pop();
+    thinking.remove();
+    addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
   }
+
   document.getElementById('chat-send').disabled = false;
   document.getElementById('chat-input').focus();
 }
