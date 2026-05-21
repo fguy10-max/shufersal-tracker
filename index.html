@@ -1565,6 +1565,7 @@ async function sendChat() {
 נתוני המוצרים הרלוונטיים (ממוינים לפי ערך):
 ${context}`;
 
+  // Temporarily add to history
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
 
   try {
@@ -1572,13 +1573,20 @@ ${context}`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
+        systemInstruction: { parts: [{ text: systemPrompt }] }, // FIX: camelCase
         contents: chatHistory,
         generationConfig: { maxOutputTokens: 400, temperature: 0.3 }
       })
     });
 
     const data = await res.json();
+    
+    // FIX: Catch HTTP errors explicitly
+    if (!res.ok) {
+      console.error("API Error Response:", data);
+      throw new Error(data.error?.message || "שגיאת API כללית");
+    }
+
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     thinking.remove();
@@ -1590,13 +1598,18 @@ ${context}`;
         .replace(/^[•\-] /gm, '• ')
         .replace(/\n/g, '<br>');
       addChatMsg('assistant', formatted);
+      
+      // Add successful response to history
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+      
       // Keep history manageable
       if (chatHistory.length > 12) chatHistory.splice(0, 2);
     } else {
+      chatHistory.pop(); // FIX: Remove user message so history stays balanced
       addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה, נסה שוב');
     }
   } catch (e) {
+    chatHistory.pop(); // FIX: Remove user message so history stays balanced
     thinking.remove();
     addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
   }
@@ -1604,6 +1617,7 @@ ${context}`;
   document.getElementById('chat-send').disabled = false;
   document.getElementById('chat-input').focus();
 }
+
 
 boot();
 </script>
