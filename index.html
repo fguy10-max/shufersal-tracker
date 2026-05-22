@@ -1498,6 +1498,7 @@ async function sendChat() {
 - תשובות קצרות וממוקדות. אל תפרט יתר על המידה אלא אם נשאל.
 - אם מוצר לא נמצא ברשימה — אמור זאת בפירוש.
 - הקטגוריה [קטגוריה] היא אינדיקציה בלבד ולא תמיד מדויקת — הסתמך על שם המוצר בעיקר.
+- כשאתה שואל שאלת הבהרה — שאל בלבד, אל תפרט את כל האפשרויות. שמור את הרשימה המלאה לאחרי שתקבל תשובה.
 
 ## נתוני מוצרים רלוונטיים:
 ${context}`;
@@ -1511,7 +1512,7 @@ ${context}`;
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: chatHistory,
-        generationConfig: { maxOutputTokens: 600, temperature: 0.2 }
+        generationConfig: { maxOutputTokens: 800, temperature: 0.2 }
       })
     });
 
