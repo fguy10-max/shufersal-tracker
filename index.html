@@ -361,8 +361,8 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
 
 <div id="tab-bar">
   <div class="tab-logo">מחירו<em>סקופ</em></div>
-  <button class="tab-btn" id="tab-app" onclick="switchTab('app')">🛍 חנות</button>
-  <button class="tab-btn active" id="tab-bot" onclick="switchTab('bot')">🤖 יועץ</button>
+  <button class="tab-btn active" id="tab-app" onclick="switchTab('app')">🛍 חנות</button>
+  <button class="tab-btn" id="tab-bot" onclick="switchTab('bot')">🤖 יועץ</button>
   <div class="tab-actions">
     <button class="h-pill" onclick="openCart()">
       🛒
@@ -372,7 +372,7 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   </div>
 </div>
 
-<div class="tab-screen" id="app-screen">
+<div class="tab-screen active" id="app-screen">
   <div class="app">
     <nav class="sidebar" id="sidebar"></nav>
     <div class="main" id="main">
@@ -428,7 +428,7 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   </div>
 </div>
 
-<div class="tab-screen active" id="bot-screen" style="flex-direction:column">
+<div class="tab-screen" id="bot-screen" style="flex-direction:column">
   <div class="bot-header">
     <div class="bot-avatar">🤖</div>
     <div>
@@ -1453,7 +1453,6 @@ function formatProductLine(p, index) {
 function buildContext(query) {
   const q = query.toLowerCase();
 
-  // Added much more conversational stop words so the engine doesn't search for "from where" or "what"
   const stopWords = new Set([
     'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה',
     'מחפש','מחפשת','נגמר','נגמרו','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
@@ -1461,7 +1460,7 @@ function buildContext(query) {
     'תמצא','תמצאי','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה',
     'הולך','הולכת','עכשיו','היום','מחר','אין','אבל','לגבי','על','המחיר','עבור',
     'אותו','היא','הוא','הם','הן','ואיפה','הי','היי','שלום','אוקיי','סבבה','תודה','בסדר',
-    'מאיפה','מהיכן','ממי','שניה','רגע'
+    'מאיפה','מהיכן','ממי','שניה','רגע','מקום','ראשון','שני','השני'
   ]);
 
   const detectedStore = detectStore(q);
@@ -1473,26 +1472,34 @@ function buildContext(query) {
     .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w)
     .filter((w, i, a) => a.indexOf(w) === i);
 
-  // Dedicated 'Deals' Intent
-  const isDealQuery = ['מבצע','מבצעים','כדאי','מעניין','מעניינים','הזדמנויות'].some(w => q.includes(w));
-  if (isDealQuery && rawKeywords.length <= 2) {
+  // Follow-up with no new product keywords — return previous context unchanged
+  if (rawKeywords.length === 0) {
+    return lastChatContext || 'אין הקשר קודם. בקש מהמשתמש לציין מוצר.';
+  }
+
+  // Deals intent
+  const isDealQuery = rawKeywords.every(w =>
+    ['מבצע','מבצעים','מעניין','מעניינים','הזדמנויות','הזדמנות'].includes(w)
+  );
+  if (isDealQuery) {
     const pool = sessionStoreFilter ? allProducts.filter(p => p._sid === sessionStoreFilter) : allProducts;
     const deals = pool
-      .filter(p => (p.allTimeLow != null && (p.effectivePrice ?? p.price) <= p.allTimeLow * 1.05) || (p.vsAvgPct != null && p.vsAvgPct < -12))
+      .filter(p => (p.allTimeLow != null && (p.effectivePrice ?? p.price) <= p.allTimeLow * 1.05)
+                || (p.vsAvgPct != null && p.vsAvgPct < -12))
       .sort((a, b) => (a.vsAvgPct ?? 0) - (b.vsAvgPct ?? 0))
       .slice(0, 15);
     if (deals.length) {
-      lastChatContext = `מידע מערכת: נמצאו ${deals.length} הזדמנויות יוצאות דופן.\n` + deals.map((p, i) => formatProductLine(p, i)).join('\n');
-      return lastChatContext;
+      lastChatContext = deals.map(p => formatProductLine(p)).join('\n');
+      return `[מצב: הזדמנויות חריגות — ${deals.length} מוצרים]\n` + lastChatContext;
     }
   }
 
   let scored = scoreProducts(rawKeywords, sessionStoreFilter);
 
-  // If follow up question and no new products found, RETURN EXACT LAST CONTEXT
   if (scored.length === 0) {
-    if (lastChatContext) return lastChatContext;
-    return 'מידע מערכת: לא נמצאו מוצרים תואמים לחיפוש, ולא קיים הקשר קודם. בקש מהמשתמש למקד את השאלה.';
+    // No results — keep previous context for follow-ups, but tell Gemini
+    if (lastChatContext) return `[החיפוש לא מצא תוצאות חדשות — הקשר קודם:\n${lastChatContext}]`;
+    return `[לא נמצאו מוצרים תואמים ל: ${rawKeywords.join(', ')}]`;
   }
 
   scored.sort((a, b) => {
@@ -1505,7 +1512,7 @@ function buildContext(query) {
   const comparison = isComparisonQuery(q);
   let top;
   if (comparison) {
-    top = scored.slice(0, 30);
+    top = scored.slice(0, 25);
   } else {
     const seen = new Map();
     for (const item of scored) {
@@ -1514,16 +1521,13 @@ function buildContext(query) {
     top = [...seen.values()].slice(0, 15);
   }
 
-  const storeCtxLabel = sessionStoreFilter ? STORES.find(s=>s.id===sessionStoreFilter)?.short : 'כל הסניפים';
-  
-  // Wrap context in explicit instructions so LLM knows exactly what to do
-  lastChatContext = `מידע מערכת מוזרק - התבסס עליו בלבד!
-  סך הכל נמצאו: ${scored.length} מוצרים רלוונטיים במאגר.
-  סינון נוכחי: ${storeCtxLabel}.
-  להלן ${top.length} האופציות המשתלמות ביותר (מדורגות מהזול ליקר):
-  ${top.map((item, idx) => formatProductLine(item.p, idx)).join('\n')}`;
+  const storeLabel = sessionStoreFilter ? STORES.find(s=>s.id===sessionStoreFilter)?.short : 'כל הסניפים';
+  const productLines = top.map(({p}) => formatProductLine(p)).join('\n');
 
-  return lastChatContext;
+  // Store compact version for follow-ups (no header overhead)
+  lastChatContext = productLines;
+
+  return `[נמצאו ${scored.length} תוצאות | מוצג: ${top.length} | סניף: ${storeLabel}]\n${productLines}`;
 }
 
 async function sendChat() {
@@ -1538,40 +1542,56 @@ async function sendChat() {
   addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
   const thinking = addThinking();
 
-  const context  = buildContext(query);
-  const today    = new Date().toLocaleDateString('he-IL');
+  const context = buildContext(query);
+  const today   = new Date().toLocaleDateString('he-IL');
+  const storeCtx = sessionStoreFilter
+    ? `\nסניף פעיל: ${STORES.find(s=>s.id===sessionStoreFilter)?.short}` : '';
 
-  // Redesigned system prompt to enforce the perfect UX
-  const systemPrompt = `אתה יועץ קניות מומחה לאפליקציית 'מחירוסקופ' גבעתיים.
-תפקידך לתת חווית משתמש מעולה, אינטואיטיבית ומלאה בפרטים. תאריך: ${today}.
+  const systemPrompt = `אתה יועץ קניות תכליתי לאפליקציית מחירוסקופ — גבעתיים. תאריך: ${today}.${storeCtx}
+סניפים: שלי שביט | אקספרס ההסתדרות | סיטי מרקט | גוד פארם.
 
-חוקי ברזל למענה:
-1. מלאות: לעולם אל תמליץ על מוצר בלי לציין את מחירו, הסניף בו הוא נמכר, והמחיר ליחידת מידה (100 גרם).
-2. מבנה התשובה (כאשר המשתמש מחפש מוצר):
-   * פתח במשפט שקוף למשתמש: "מצאתי X מוצרים רלוונטיים במאגר. הנה האופציות:"
-   * 🏆 **מקום ראשון:** שם המוצר | מחיר האריזה | מחיר ל-100 גרם | שם הסניף.
-   * 🥈 **מקום שני:** ציין גם אותו בצורה דומה כדי לתת למשתמש אלטרנטיבה.
-   * 💡 **טיפ:** אם יש שפל היסטורי או ירידת מחיר - ציין זאת בבירור!
-3. שאלות המשך (כגון "מאיפה זה?", "מה עם המקום השני?", "כמה עולה?"): המערכת מזריקה לך בכל הודעה את אותם נתונים מהחיפוש האחרון. ענה לשאלה בביטחון ואל תאמר "אין לי נתונים". קרא את המידע המוזרק!
-4. אין להשתמש בטבלאות Markdown (Table). השתמש בטקסט קריא ורשימות.
-5. אין להמציא לעולם מחירים או מוצרים שלא הופיעו בטקסט ה"מידע מערכת מוזרק".`;
+## כיצד לענות
+**חיפוש מוצר:**
+**הכי משתלם:** [שם] | [סניף] | ₪[מחיר מלא] ([משקל]) | ₪[X]/[יחידה]
+**מקום שני:** [שם] | [סניף] | ₪[מחיר] | ₪[X]/[יחידה] ← רק אם הפרש > 10%
+⚡ [הזדמנות חריגה] ← רק אם שפל היסטורי או vsAvgPct < -15%
 
+**שאלת המשך** ("כמה עולה?", "מה עם השני?", "גם באקספרס?"): ענה ישירות מהנתונים שלפניך. משפט אחד או שניים.
+
+**רשימת קניות:** שורה לכל פריט → סיכום סניף מומלץ.
+
+**הזדמנויות:** 3-4 הדילים הטובים, מחיר + סניף + % מתחת לממוצע.
+
+## כללים
+- effectivePrice = מחיר אחרי מבצע — השתמש בו תמיד
+- יחידת השוואה: 100ג/מ"ל לרוב המוצרים | ליחידה לביצים/פירות בודדים | לק"ג לתפזורת
+- אם הפרש בין מקומות < 10% — כתוב "מחיר דומה בסניפים"
+- אסור להמציא מחירים שאינם ברשימה
+- אסור להשתמש בטבלאות
+- אם מוצר לא קיים — אמור זאת ישירות
+
+## נתונים:
+${context}`;
+
+  // Inject context into current message, keep clean text in history
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
 
-  const historyForApi = chatHistory.map(msg => ({...msg}));
-  const lastIdx = historyForApi.length - 1;
-  historyForApi[lastIdx].parts = [{
-    text: `${context}\n\n[הודעת המשתמש המקורית אליך]:\n${query}`
-  }];
-
   try {
+    // Build API payload with context injected only into last message
+    const apiContents = chatHistory.map((msg, i) => {
+      if (i === chatHistory.length - 1 && msg.role === 'user') {
+        return { role: 'user', parts: [{ text: `[נתוני מוצרים]\n${context}\n\n[שאלה]\n${query}` }] };
+      }
+      return msg;
+    });
+
     const res = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: historyForApi,
-        generationConfig: { maxOutputTokens: 800, temperature: 0.25 }
+        contents: apiContents,
+        generationConfig: { maxOutputTokens: 600, temperature: 0.15 }
       })
     });
 
@@ -1589,15 +1609,19 @@ async function sendChat() {
         .replace(/\n/g, '<br>');
       addChatMsg('assistant', formatted);
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      if (chatHistory.length > 8) chatHistory.splice(0, 2);
+      // Keep history lean — 3 exchanges (6 messages)
+      if (chatHistory.length > 6) chatHistory.splice(0, 2);
     } else {
       chatHistory.pop();
-      addChatMsg('assistant', '😅 סליחה, לא הצלחתי לקבל תשובה (החיבור נקטע).');
+      addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה. נסה שוב.');
     }
   } catch (e) {
     chatHistory.pop();
     thinking.remove();
-    addChatMsg('assistant', '❌ שגיאת חיבור: ' + e.message);
+    const msg = e.message.includes('quota') || e.message.includes('429')
+      ? '⏳ הגענו למגבלת הבקשות הזמנית. נסה שוב בעוד כמה שניות.'
+      : '❌ שגיאת חיבור: ' + e.message;
+    addChatMsg('assistant', msg);
   }
 
   document.getElementById('chat-send').disabled = false;
