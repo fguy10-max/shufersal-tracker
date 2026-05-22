@@ -359,7 +359,6 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   <div class="sp-msg" id="splash-msg">טוען...</div>
 </div>
 
-<!-- Tab bar (Bot Tab Active by Default) -->
 <div id="tab-bar">
   <div class="tab-logo">מחירו<em>סקופ</em></div>
   <button class="tab-btn" id="tab-app" onclick="switchTab('app')">🛍 חנות</button>
@@ -373,7 +372,6 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   </div>
 </div>
 
-<!-- App tab -->
 <div class="tab-screen" id="app-screen">
   <div class="app">
     <nav class="sidebar" id="sidebar"></nav>
@@ -430,7 +428,6 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   </div>
 </div>
 
-<!-- Bot tab -->
 <div class="tab-screen active" id="bot-screen" style="flex-direction:column">
   <div class="bot-header">
     <div class="bot-avatar">🤖</div>
@@ -466,7 +463,6 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   </div>
 </div>
 
-<!-- Drawers & modals -->
 <div class="drawer-bg" id="cart-bg" onclick="closeCart()"></div>
 <div class="drawer" id="cart-drawer">
   <div class="drawer-head">
@@ -617,7 +613,6 @@ function init() {
   render();
   updateBadge();
 
-  // Make sure Bot tab is active on app load
   switchTab('bot');
 }
 
@@ -1284,7 +1279,7 @@ function parsePromoPrice(desc, regularPrice) {
 const GEMINI_KEY  = 'WORKER';
 const GEMINI_URL  = 'https://mchirosc-gemini.fguy10.workers.dev';
 const chatHistory = [];
-let lastChatContext = ''; // Will hold the product list from the current/last search
+let lastChatContext = ''; // Will hold the detailed product list from the current/last search
 
 function switchTab(t) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1430,8 +1425,8 @@ function scoreProducts(rawKeywords, storeFilter) {
   return results;
 }
 
-// Improved Formatter - clear bullet points for the LLM to read
-function formatProductLine(p) {
+// New explicit formatter so the bot literally cannot miss the info
+function formatProductLine(p, index) {
   const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
   const eff   = p.effectivePrice ?? p.price;
   const promo = p.promo ? ` (מבצע: ${p.promo.slice(0, 50)})` : '';
@@ -1440,26 +1435,33 @@ function formatProductLine(p) {
   if (p.pricePer100 && p.unitType) {
     const isCountable = p.unitType === 'unit' || (p.qty <= 12 && !p.unitType);
     if (isCountable && p.qty) {
-      unitInfo = ` | ₪${(eff / p.qty).toFixed(2)} ליחידה`;
+      unitInfo = `₪${(eff / p.qty).toFixed(2)} ליחידה`;
     } else {
       const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
-      unitInfo = ` | ₪${p.pricePer100} ל-100 ${unit}`;
+      unitInfo = `₪${p.pricePer100} ל-100 ${unit}`;
     }
   }
-  return `• מוצר: ${p.name} ${p.unit?'('+p.unit+')':''}\n  סניף: ${store}\n  מחיר: ₪${eff.toFixed(2)}${promo}${unitInfo}`;
+  
+  let tags = [];
+  if (p.vsAvgPct != null) tags.push(`${p.vsAvgPct > 0 ? '+' : ''}${p.vsAvgPct}% מממוצע`);
+  if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) tags.push('⚡ שפל היסטורי');
+  else if (p.changePct != null && p.changePct < -5) tags.push(`📉 ירד ב-${Math.abs(Math.round(p.changePct))}%`);
+
+  return `[${index + 1}] שם: ${p.name} ${p.unit?'('+p.unit+')':''} | סניף: ${store} | מחיר אריזה: ₪${eff.toFixed(2)}${promo} | מחיר יחסי: ${unitInfo} | הערות: ${tags.join(', ') || 'אין'}`;
 }
 
 function buildContext(query) {
   const q = query.toLowerCase();
 
-  // Robust Stop Words — including conversational follow ups so they don't erase context
+  // Added much more conversational stop words so the engine doesn't search for "from where" or "what"
   const stopWords = new Set([
     'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה',
     'מחפש','מחפשת','נגמר','נגמרו','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
     'הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','משתלמת','כדאי','מומלץ',
     'תמצא','תמצאי','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה',
     'הולך','הולכת','עכשיו','היום','מחר','אין','אבל','לגבי','על','המחיר','עבור',
-    'אותו','היא','הוא','הם','הן','ואיפה','הי','היי','שלום','אוקיי','סבבה','תודה','בסדר'
+    'אותו','היא','הוא','הם','הן','ואיפה','הי','היי','שלום','אוקיי','סבבה','תודה','בסדר',
+    'מאיפה','מהיכן','ממי','שניה','רגע'
   ]);
 
   const detectedStore = detectStore(q);
@@ -1480,21 +1482,19 @@ function buildContext(query) {
       .sort((a, b) => (a.vsAvgPct ?? 0) - (b.vsAvgPct ?? 0))
       .slice(0, 15);
     if (deals.length) {
-      lastChatContext = '[מצב: הזדמנויות חריגות]\n' + deals.map(formatProductLine).join('\n');
+      lastChatContext = `מידע מערכת: נמצאו ${deals.length} הזדמנויות יוצאות דופן.\n` + deals.map((p, i) => formatProductLine(p, i)).join('\n');
       return lastChatContext;
     }
   }
 
   let scored = scoreProducts(rawKeywords, sessionStoreFilter);
 
-  // Extremely crucial for follow up questions like "אבל כמה זה?" or "אוקיי"
-  // If we couldn't find ANY new products based on keywords, we just pass the exact same list from the last turn!
+  // If follow up question and no new products found, RETURN EXACT LAST CONTEXT
   if (scored.length === 0) {
     if (lastChatContext) return lastChatContext;
-    return 'לא סופק הקשר חדש ממאגר המוצרים. שאל את המשתמש למה הוא מתכוון.';
+    return 'מידע מערכת: לא נמצאו מוצרים תואמים לחיפוש, ולא קיים הקשר קודם. בקש מהמשתמש למקד את השאלה.';
   }
 
-  // Found new products, format and save them
   scored.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     const va = a.p.pricePer100 ?? (a.p.effectivePrice ?? a.p.price);
@@ -1511,10 +1511,18 @@ function buildContext(query) {
     for (const item of scored) {
       if (!seen.has(item.p.barcode)) seen.set(item.p.barcode, item);
     }
-    top = [...seen.values()].slice(0, 20); // Top 20 is plenty for the AI to pick from
+    top = [...seen.values()].slice(0, 15);
   }
 
-  lastChatContext = top.map(({p}) => formatProductLine(p)).join('\n');
+  const storeCtxLabel = sessionStoreFilter ? STORES.find(s=>s.id===sessionStoreFilter)?.short : 'כל הסניפים';
+  
+  // Wrap context in explicit instructions so LLM knows exactly what to do
+  lastChatContext = `מידע מערכת מוזרק - התבסס עליו בלבד!
+  סך הכל נמצאו: ${scored.length} מוצרים רלוונטיים במאגר.
+  סינון נוכחי: ${storeCtxLabel}.
+  להלן ${top.length} האופציות המשתלמות ביותר (מדורגות מהזול ליקר):
+  ${top.map((item, idx) => formatProductLine(item.p, idx)).join('\n')}`;
+
   return lastChatContext;
 }
 
@@ -1530,32 +1538,30 @@ async function sendChat() {
   addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
   const thinking = addThinking();
 
-  // Get matching products (or keep the same ones if it's a follow-up)
   const context  = buildContext(query);
-  
   const today    = new Date().toLocaleDateString('he-IL');
-  const storeCtx = sessionStoreFilter ? `\nסניף פעיל כרגע מסונן: ${STORES.find(s=>s.id===sessionStoreFilter)?.short || sessionStoreFilter}` : '';
 
-  // Improved, strict yet simple prompt
-  const systemPrompt = `אתה 'יועץ קניות' וירטואלי באפליקציית מחירוסקופ גבעתיים.
-המטרה שלך היא לתת תשובות ישירות, קצרות ושימושיות. תאריך היום: ${today}.${storeCtx}
+  // Redesigned system prompt to enforce the perfect UX
+  const systemPrompt = `אתה יועץ קניות מומחה לאפליקציית 'מחירוסקופ' גבעתיים.
+תפקידך לתת חווית משתמש מעולה, אינטואיטיבית ומלאה בפרטים. תאריך: ${today}.
 
-חוקי יסוד:
-1. קצר ולעניין: המנע מהקדמות ארוכות. גש ישר למוצרים ולמחירים.
-2. פירוט חובה: כשאתה ממליץ על מוצר, חובה לכתוב את שמו, המחיר שלו ושם הסניף.
-3. הסתמך רק על הנתונים: המערכת מזריקה "נתונים מהמאגר" אל תוך שאלת המשתמש. השתמש רק בהם! לעולם אל תמציא מוצרים, סניפים או מחירים.
-4. השוואה חכמה: אם מצאת כמה מוצרים בנתונים, תמיד הצג את המשתלם ביותר ראשון (היעזר במחיר ל-100 גרם להשוואה).
-5. שאלות המשך (כגון "אבל כמה זה?"): אם המשתמש שואל שאלת המשך, הנתונים יסופקו לך מחדש - ענה בהתבסס עליהם!
-6. אם הנתונים מראים "לא סופק הקשר חדש", ורק המשתמש אמר "היי" או "שלום" - השב לו בנימוס.`;
+חוקי ברזל למענה:
+1. מלאות: לעולם אל תמליץ על מוצר בלי לציין את מחירו, הסניף בו הוא נמכר, והמחיר ליחידת מידה (100 גרם).
+2. מבנה התשובה (כאשר המשתמש מחפש מוצר):
+   * פתח במשפט שקוף למשתמש: "מצאתי X מוצרים רלוונטיים במאגר. הנה האופציות:"
+   * 🏆 **מקום ראשון:** שם המוצר | מחיר האריזה | מחיר ל-100 גרם | שם הסניף.
+   * 🥈 **מקום שני:** ציין גם אותו בצורה דומה כדי לתת למשתמש אלטרנטיבה.
+   * 💡 **טיפ:** אם יש שפל היסטורי או ירידת מחיר - ציין זאת בבירור!
+3. שאלות המשך (כגון "מאיפה זה?", "מה עם המקום השני?", "כמה עולה?"): המערכת מזריקה לך בכל הודעה את אותם נתונים מהחיפוש האחרון. ענה לשאלה בביטחון ואל תאמר "אין לי נתונים". קרא את המידע המוזרק!
+4. אין להשתמש בטבלאות Markdown (Table). השתמש בטקסט קריא ורשימות.
+5. אין להמציא לעולם מחירים או מוצרים שלא הופיעו בטקסט ה"מידע מערכת מוזרק".`;
 
-  // We only push the user's raw text into the UI/Local chat history
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
 
-  // For the API Call, we wrap their latest question with the dynamic product data!
   const historyForApi = chatHistory.map(msg => ({...msg}));
   const lastIdx = historyForApi.length - 1;
   historyForApi[lastIdx].parts = [{
-    text: `[נתונים נוכחיים מהמאגר לשאלה זו - התבסס עליהם]:\n${context}\n\n[הודעת המשתמש]:\n${query}`
+    text: `${context}\n\n[הודעת המשתמש המקורית אליך]:\n${query}`
   }];
 
   try {
@@ -1564,8 +1570,8 @@ async function sendChat() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: historyForApi, // Sending the enriched history
-        generationConfig: { maxOutputTokens: 800, temperature: 0.35 }
+        contents: historyForApi,
+        generationConfig: { maxOutputTokens: 800, temperature: 0.25 }
       })
     });
 
