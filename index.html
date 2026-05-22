@@ -1342,82 +1342,124 @@ function addThinking() {
 
 function buildContext(query) {
   const q = query.toLowerCase();
-  
-  const stopWords = ['מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה','מחפש','נגמר','נגמרו','צריך','כמה','עולה','איפה','זול','הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','כדאי','מומלץ'];
-  
+
+  const stopWords = new Set([
+    'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה',
+    'מחפש','מחפשת','נגמר','נגמרו','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
+    'הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','משתלמת','כדאי','מומלץ',
+    'תמצא','תמצאי','יש','אין','קנות','לקנות','רשימה','קניות','סופר','סניף'
+  ]);
+
   const keywords = q
     .replace(/[?!.,]/g, '')
     .split(/\s+/)
-    .filter(w => w.length > 2 && !stopWords.includes(w))
+    .filter(w => w.length > 1 && !stopWords.has(w))
     .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
 
-  if (keywords.length === 0 && lastChatContext !== '') {
-    return lastChatContext;
-  }
-
+  // Score every product
   let scoredProducts = [];
-  for (const [catId, items] of Object.entries(catMap)) {
-    const catName = CAT[catId] ? CAT[catId].l : '';
-    for (const p of items) {
-      let score = 0;
-      let pName = p.name.toLowerCase();
-      let matchedWords = 0;
-      for (const kw of keywords) {
-        if (pName.includes(kw)) {
-          score += 10;
-          matchedWords++;
-          if (new RegExp(`\\b${kw}\\b`).test(pName)) score += 5; 
-        } else if (catName.includes(kw)) {
-          score += 4; 
-        } else if ((p.brand || '').toLowerCase().includes(kw)) {
-          score += 3;
-        }
-      }
-      if (matchedWords > 1) score += (matchedWords * 5); 
-      if (score > 0) {
-        scoredProducts.push({ p, score, catName });
+  for (const p of allProducts) {
+    const pName = p.name.toLowerCase();
+    const brand = (p.brand || '').toLowerCase();
+    let score = 0;
+    let matchedWords = 0;
+    for (const kw of keywords) {
+      if (pName.includes(kw)) {
+        score += 10;
+        matchedWords++;
+        if (new RegExp(`(^|\\s)${kw}`).test(pName)) score += 5;
+      } else if (brand.includes(kw)) {
+        score += 4;
       }
     }
+    if (matchedWords > 1) score += matchedWords * 5;
+    if (score > 0) scoredProducts.push({ p, score });
   }
 
-  if (scoredProducts.length === 0 && lastChatContext !== '') {
-    return lastChatContext;
-  }
-
+  // Fallback: top deals
   if (scoredProducts.length === 0) {
-    let deals = allProducts.filter(p => p.promo);
-    deals.sort((a, b) => (Math.abs(b.vsAvgPct||0) - Math.abs(a.vsAvgPct||0)));
-    scoredProducts = deals.slice(0, 30).map(p => ({ p, score: 1, catName: 'מבצע' }));
+    if (lastChatContext) return lastChatContext;
+    scoredProducts = allProducts
+      .filter(p => p.promo && p.vsAvgPct != null)
+      .sort((a, b) => (a.vsAvgPct || 0) - (b.vsAvgPct || 0))
+      .slice(0, 30)
+      .map(p => ({ p, score: 1 }));
   }
 
+  // Sort by score then by best value (effectivePrice per 100g if available)
   scoredProducts.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    const ea = a.p.effectivePrice ?? a.p.price;
-    const eb = b.p.effectivePrice ?? b.p.price;
-    return ea - eb;
+    const va = a.p.pricePer100 ?? (a.p.effectivePrice ?? a.p.price);
+    const vb = b.p.pricePer100 ?? (b.p.effectivePrice ?? b.p.price);
+    return va - vb;
   });
 
-  const topResults = scoredProducts.slice(0, 60);
-  const lines = topResults.map(({ p, catName }) => {
-    const eff = p.effectivePrice ?? p.price;
+  const top = scoredProducts.slice(0, 80);
+
+  // Compute average effectivePrice per 100g among matched products (for anomaly detection)
+  const withP100 = top.filter(x => x.p.pricePer100);
+  const avgP100 = withP100.length
+    ? withP100.reduce((s, x) => s + x.p.pricePer100, 0) / withP100.length
+    : null;
+
+  const lines = top.map(({ p }) => {
     const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
-    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0,50)}]` : '';
-    const p100 = p.pricePer100 ? ` | ₪${p.pricePer100}/100${p.unitType==='ml'?'מל':'ג'}` : '';
-    return `• [קטגוריה: ${catName}] ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${p100}`;
+    const eff   = p.effectivePrice ?? p.price;
+    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0, 60)}]` : '';
+
+    // Price per unit
+    let unitInfo = '';
+    if (p.pricePer100) {
+      const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
+      unitInfo = ` | ₪${p.pricePer100}/100${unit}`;
+    } else if (p.unit) {
+      unitInfo = ` | ${p.unit}`;
+    }
+
+    // vs average (cross-store)
+    let vsAvg = '';
+    if (p.vsAvgPct != null) {
+      const sign = p.vsAvgPct > 0 ? '+' : '';
+      vsAvg = ` | ${sign}${p.vsAvgPct}% מממוצע`;
+    }
+
+    // Historical signal
+    let hist = '';
+    if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) {
+      hist = ' | ⚡ שפל היסטורי';
+    } else if (p.changePct != null && p.changePct < -5) {
+      hist = ` | 📉 ירד ${Math.abs(Math.round(p.changePct))}% לאחרונה`;
+    }
+
+    // Cross-store prices for this barcode
+    let crossStore = '';
+    if (p._prices && Object.keys(p._prices).length > 1) {
+      const entries = Object.entries(p._prices)
+        .map(([sid, pr]) => {
+          const sname = STORES.find(s => s.id === sid)?.short || sid;
+          return `${sname}:₪${pr.toFixed(2)}`;
+        })
+        .join(' / ');
+      crossStore = ` | [כל הסניפים: ${entries}]`;
+    }
+
+    return `• ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${unitInfo}${vsAvg}${hist}${crossStore}`;
   }).join('\n');
 
-  lastChatContext = lines;
-  return lines;
+  // Prepend summary stats for this search
+  let summary = '';
+  if (avgP100) {
+    summary = `[ממוצע מחיר/100 יחידה בתוצאות: ₪${avgP100.toFixed(2)}]\n`;
+  }
+
+  lastChatContext = summary + lines;
+  return lastChatContext;
 }
 
 async function sendChat() {
   const input = document.getElementById('chat-input');
   const query = input.value.trim();
   if (!query) return;
-  if (GEMINI_KEY === 'YOUR_API_KEY_HERE') {
-    addChatMsg('assistant', '⚠️ יש להוסיף מפתח Gemini API בקוד (GEMINI_KEY)');
-    return;
-  }
 
   input.value = '';
   input.style.height = 'auto';
@@ -1426,21 +1468,38 @@ async function sendChat() {
   addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
 
   const thinking = addThinking();
-  const context = buildContext(query);
-  const today = new Date().toLocaleDateString('he-IL');
+  const context  = buildContext(query);
+  const today    = new Date().toLocaleDateString('he-IL');
 
-  const systemPrompt = `אתה עוזר קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בסופרמרקטים בגבעתיים.
-הסניפים: שלי שביט, שופרסל אקספרס ההסתדרות, סיטי מרקט גבעתיים, גוד פארם גבעתיים.
+  const systemPrompt = `אתה סוכן קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בגבעתיים.
 תאריך היום: ${today}.
+סניפים: שלי שביט | שופרסל אקספרס ההסתדרות | סיטי מרקט גבעתיים | גוד פארם גבעתיים.
 
-כללים קריטיים לתשובות שלך:
-1. היה ספציפי עם מחירים וסניפים, והמלץ על ה-value for money הטוב ביותר.
-2. הבן הקשר (Context): שים לב לתגית [קטגוריה] במוצרים. אם המשתמש מדבר על ירקות טריים (כמו עגבניות), סנן החוצה לגמרי מוצרי שימורים או רטבים והצג רק מה שמתאים.
-3. התאמה חלופית: אם המשתמש מחפש משהו כללי (כמו "מוצרלה"), חפש ברשימה את כל תתי-הסוגים והצע לו אפשרויות רלוונטיות.
-4. השתמש בשקלים (₪), ענה בתשובות קצרות וברורות. אל תמציא מחירים או מוצרים שאינם ברשימה מטה.
-5. איסור מוחלט על שימוש בטבלאות (Tables) או תגיות HTML! ענה רק בטקסט פשוט ונקודות (Bullet points).
+## זהות
+אתה עוזר קניות שיחתי. אתה חושב לפני שאתה עונה, שואל שאלת הבהרה כשצריך, ותמיד מבסס את ההמלצה שלך על הנתונים בלבד.
 
-נתוני המוצרים הרלוונטיים (ממוינים לפי התאמה):
+## עקרונות השוואה
+- השווה תמיד לפי **מחיר ל-100 גרם / 100 מ"ל** (שדה pricePer100). אם אין — השתמש ב-effectivePrice.
+- effectivePrice = מחיר אחרי מבצע (כבר מחושב). זה המחיר הרלוונטי, לא המחיר הרגיל.
+- vsAvgPct שלילי = זול מהממוצע. מתחת ל-10%- זו הזדמנות. מתחת ל-20%- זו הזדמנות חריגה.
+- ⚡ שפל היסטורי = המחיר הכי נמוך שנרשם אי פעם. כדאי לציין זאת בפירוש.
+- [כל הסניפים: ...] = מחירי אותו ברקוד בשאר הסניפים. השתמש בזה להשוואה ישירה.
+
+## אופן מענה
+1. אם המשתמש שואל על מוצר כללי (כמו "מוצרלה") — **קודם כל** זהה את הסוגים השונים שקיימים ברשימה (מגורדת / כדורים / פרסקה / רגילה וכו') ושאל איזה סוג הוא מחפש — אלא אם יש רק סוג אחד.
+2. אחרי שיש לך סוג ספציפי — הצג את האפשרויות הממוינות לפי מחיר ל-100 גרם (מהזול לביקר), ציין מחיר מלא + מחיר ל-100 גרם + סניף + מבצע אם יש.
+3. סיים תמיד בהמלצה ברורה: **"הכי משתלם: [שם מוצר מדויק] ב[סניף] — ₪X ל-100 גרם"**.
+4. אם יש הזדמנות חריגה (vsAvgPct < -15% או שפל היסטורי) — ציין אותה בנפרד עם הדגשה.
+5. אם המשתמש שולח רשימת קניות — טפל בכל פריט בנפרד ואז סכם: לאיזה סניף כדאי ללכת בסך הכל ולמה.
+
+## כללים
+- אסור להמציא מוצרים, מחירים, או סניפים שאינם ברשימה.
+- אסור להשתמש בטבלאות HTML. טקסט ונקודות בלבד.
+- תשובות קצרות וממוקדות. אל תפרט יתר על המידה אלא אם נשאל.
+- אם מוצר לא נמצא ברשימה — אמור זאת בפירוש.
+- הקטגוריה [קטגוריה] היא אינדיקציה בלבד ולא תמיד מדויקת — הסתמך על שם המוצר בעיקר.
+
+## נתוני מוצרים רלוונטיים:
 ${context}`;
 
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
@@ -1452,14 +1511,14 @@ ${context}`;
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: chatHistory,
-        generationConfig: { maxOutputTokens: 400, temperature: 0.3 }
+        generationConfig: { maxOutputTokens: 600, temperature: 0.2 }
       })
     });
 
     const data = await res.json();
-    
+
     if (!res.ok) {
-      throw new Error(data.error?.message || "שגיאת API כללית");
+      throw new Error(data.error?.message || 'שגיאת API');
     }
 
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -1467,19 +1526,16 @@ ${context}`;
 
     if (reply) {
       const safeReply = reply.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      
       const formatted = safeReply
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^[•\-] /gm, '• ')
+        .replace(/^[\-•] /gm, '• ')
         .replace(/\n/g, '<br>');
-        
       addChatMsg('assistant', formatted);
-      
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      if (chatHistory.length > 12) chatHistory.splice(0, 2);
+      if (chatHistory.length > 16) chatHistory.splice(0, 2);
     } else {
       chatHistory.pop();
-      addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה מהשרת. הבוט הפסיק לייצר טקסט באמצע.');
+      addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה. נסה שוב.');
     }
   } catch (e) {
     chatHistory.pop();
