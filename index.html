@@ -1340,55 +1340,179 @@ function addThinking() {
   return div;
 }
 
-// Synonym map — expand each user keyword to multiple search terms
+// ── Store detection ─────────────────────────────────────────────
+const STORE_HINTS = {
+  'שביט':        'sheli_shabit',
+  'שלי':         'sheli_shabit',
+  'שלי שביט':    'sheli_shabit',
+  'אקספרס':      'express_histadrut',
+  'הסתדרות':     'express_histadrut',
+  'היסתדרות':    'express_histadrut',
+  'סיטי':        'citymarket_givataim',
+  'סיטי מרקט':   'citymarket_givataim',
+  'גוד פארם':    'goodpharm_givataim',
+  'גוד':         'goodpharm_givataim',
+  'פארם':        'goodpharm_givataim',
+};
+
+// Persists active store filter across turns in a conversation
+let sessionStoreFilter = null;
+
+function detectStore(q) {
+  for (const [hint, id] of Object.entries(STORE_HINTS)) {
+    if (q.includes(hint)) return id;
+  }
+  return null;
+}
+
+// Detect if user is asking for a cross-store comparison (no dedup)
+function isComparisonQuery(q) {
+  return ['השווה','השוואה','בכל הסניפים','בכל סניף','בכל המקומות','כמה עולה','מה המחיר'].some(w => q.includes(w));
+}
+
+// Detect shopping list (multiple items separated by commas/newlines/ו)
+function isListQuery(q) {
+  return (q.match(/,|וגם|וגם |^\s*[-•]/m) || q.split('\n').length > 2);
+}
+
+// ── Synonym map ──────────────────────────────────────────────────
 const SYNONYMS = {
-  'מוצרלה':   ['מוצרלה'],
-  'גבינה':    ['גבינה'],
-  'קוטג':     ["קוטג'", 'קוטג'],
-  'יוגורט':   ['יוגורט', "יוגורט"],
-  'חלב':      ['חלב'],
-  'שמנת':     ['שמנת', 'שמנת חמוצה'],
-  'ביצים':    ['ביצים', 'ביצה'],
-  'עוף':      ['עוף', 'חזה עוף', 'שוק', 'כנף', 'פרגית'],
-  'בשר':      ['בשר', 'בקר', 'טחון', 'אנטריקוט', 'סטייק'],
-  'פסטה':     ['פסטה', 'ספגטי', 'פנה', 'ריגטוני', 'פוסילי', 'טליאטלה', 'לינגוויני'],
-  'אורז':     ['אורז'],
-  'לחם':      ['לחם', 'פיתה', 'בגט', 'חלה'],
-  'טופו':     ['טופו', 'טופה'],
-  'קפה':      ['קפה', 'נס קפה', 'אספרסו'],
-  'שוקולד':   ['שוקולד'],
-  'עגבניות':  ['עגבניות', 'עגבנייה'],
-  'מלפפון':   ['מלפפון', 'מלפפונים'],
-  'גזר':      ['גזר', 'גזרים'],
-  'תפוח':     ['תפוח', 'תפוחים'],
-  'בננה':     ['בננה', 'בננות'],
-  'שמן':      ['שמן', "שמן זית", 'שמן קנולה'],
-  'קמח':      ['קמח'],
-  'סוכר':     ['סוכר'],
-  'מלח':      ['מלח'],
-  'ביסלי':    ['ביסלי'],
-  'במבה':     ['במבה'],
-  'שקשוקה':   ['שקשוקה'],
-  'טחינה':    ['טחינה'],
-  'חומוס':    ['חומוס'],
-  'גבינה צהובה': ['גבינה צהובה', 'גבינה חצי קשה', 'אמנטל', 'גאודה', 'צהובה'],
-  'גבינה לבנה': ['גבינה לבנה', '5%', '9%'],
+  'מוצרלה':        ['מוצרלה'],
+  'גבינה':         ['גבינה'],
+  'קוטג':          ["קוטג'", 'קוטג'],
+  'יוגורט':        ['יוגורט'],
+  'חלב':           ['חלב'],
+  'שמנת':          ['שמנת'],
+  'ביצים':         ['ביצים', 'ביצה'],
+  'עוף':           ['עוף', 'חזה עוף', 'שוק', 'כנף', 'פרגית'],
+  'בשר':           ['בשר', 'בקר', 'טחון', 'אנטריקוט', 'סטייק'],
+  'פסטה':          ['פסטה', 'ספגטי', 'פנה', 'ריגטוני', 'פוסילי', 'טליאטלה', 'לינגוויני'],
+  'אורז':          ['אורז'],
+  'לחם':           ['לחם', 'פיתה', 'בגט', 'חלה'],
+  'טופו':          ['טופו', 'טופה'],
+  'קפה':           ['קפה', 'נס קפה', 'אספרסו'],
+  'שוקולד':        ['שוקולד'],
+  'עגבניות':       ['עגבניות', 'עגבנייה'],
+  'מלפפון':        ['מלפפון', 'מלפפונים'],
+  'גזר':           ['גזר', 'גזרים'],
+  'תפוח':          ['תפוח', 'תפוחים'],
+  'בננה':          ['בננה', 'בננות'],
+  'שמן':           ['שמן', 'שמן זית', 'שמן קנולה'],
+  'קמח':           ['קמח'],
+  'סוכר':          ['סוכר'],
+  'מלח':           ['מלח'],
+  'ביסלי':         ['ביסלי'],
+  'במבה':          ['במבה'],
+  'טחינה':         ['טחינה'],
+  'חומוס':         ['חומוס'],
+  'גבינה צהובה':   ['גבינה צהובה', 'גבינה חצי קשה', 'אמנטל', 'גאודה'],
+  'גבינה לבנה':    ['גבינה לבנה'],
 };
 
 function expandKeywords(keywords) {
   const expanded = new Set(keywords);
   for (const kw of keywords) {
-    if (SYNONYMS[kw]) {
-      SYNONYMS[kw].forEach(s => expanded.add(s));
-    }
-    // partial match against synonym keys
+    if (SYNONYMS[kw]) SYNONYMS[kw].forEach(s => expanded.add(s));
     for (const [key, vals] of Object.entries(SYNONYMS)) {
-      if (key.includes(kw) || kw.includes(key)) {
-        vals.forEach(s => expanded.add(s));
-      }
+      if (key.includes(kw) || kw.includes(key)) vals.forEach(s => expanded.add(s));
     }
   }
   return [...expanded];
+}
+
+function scoreProducts(rawKeywords, storeFilter) {
+  const keywords = expandKeywords(rawKeywords);
+  const results = [];
+
+  const pool = storeFilter
+    ? allProducts.filter(p => p._sid === storeFilter)
+    : allProducts;
+
+  for (const p of pool) {
+    const pName = p.name.toLowerCase();
+    const brand = (p.brand || '').toLowerCase();
+    let score = 0, matchedRaw = 0;
+
+    for (const kw of keywords) {
+      const isRaw = rawKeywords.includes(kw);
+      if (pName.includes(kw)) {
+        const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (pName.startsWith(kw))                                   score += isRaw ? 25 : 18;
+        else if (new RegExp(`(^|\\s)${escaped}`).test(pName))       score += isRaw ? 20 : 14;
+        else                                                         score += isRaw ? 12 : 8;
+        if (isRaw) matchedRaw++;
+      } else if (brand.includes(kw)) {
+        score += isRaw ? 5 : 3;
+      }
+    }
+
+    if (matchedRaw > 1) score += matchedRaw * 8;
+
+    if (score > 0) {
+      const eff = p.effectivePrice ?? p.price;
+      if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) score += 10;
+      else if (p.vsAvgPct != null && p.vsAvgPct < -10)        score += 6;
+      else if (p.vsAvgPct != null && p.vsAvgPct < -5)         score += 3;
+      if (p.promo) score += 3;
+      results.push({ p, score });
+    }
+  }
+  return results;
+}
+
+function formatProductLine(p) {
+  const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
+  const eff   = p.effectivePrice ?? p.price;
+  const promo = p.promo ? ` [מבצע: ${p.promo.slice(0, 50)}]` : '';
+
+  // Full price + weight/volume
+  const size = p.unit ? ` (${p.unit})` : '';
+
+  // Comparison unit — context-aware
+  let unitInfo = '';
+  if (p.pricePer100 && p.unitType && p.qty) {
+    // Use per-unit for clearly countable items (eggs, individual items under 5 qty)
+    const isCountable = p.unitType === 'unit' || (p.qty <= 12 && !p.unitType);
+    if (isCountable) {
+      const perUnit = (eff / p.qty).toFixed(2);
+      unitInfo = ` | ₪${perUnit}/יחידה`;
+    } else {
+      const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
+      unitInfo = ` | ₪${p.pricePer100}/100${unit}`;
+    }
+  } else if (p.pricePer100) {
+    const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
+    unitInfo = ` | ₪${p.pricePer100}/100${unit}`;
+  }
+
+  let vsAvg = '';
+  if (p.vsAvgPct != null) {
+    const sign = p.vsAvgPct > 0 ? '+' : '';
+    vsAvg = ` | ${sign}${p.vsAvgPct}% מממוצע`;
+  }
+
+  let hist = '';
+  if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) {
+    hist = ' | ⚡ שפל היסטורי';
+  } else if (p.changePct != null && p.changePct < -5) {
+    hist = ` | 📉 ירד ${Math.abs(Math.round(p.changePct))}%`;
+  }
+
+  // Other stores selling same barcode
+  let otherStores = '';
+  if (p._prices) {
+    const others = Object.entries(p._prices)
+      .filter(([sid, pr]) => sid !== p._sid)
+      .map(([sid, pr]) => {
+        const sname = STORES.find(s => s.id === sid)?.short || sid;
+        const diff = Math.round(((pr - eff) / eff) * 100);
+        const sign = diff > 0 ? '+' : '';
+        return `${sname} ₪${pr.toFixed(2)} (${sign}${diff}%)`;
+      });
+    if (others.length) otherStores = ` | גם ב: ${others.join(', ')}`;
+  }
+
+  return `• ${p.name}${size} | ${store} | ₪${eff.toFixed(2)}${promo}${unitInfo}${vsAvg}${hist}${otherStores}`;
 }
 
 function buildContext(query) {
@@ -1398,118 +1522,85 @@ function buildContext(query) {
     'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה',
     'מחפש','מחפשת','נגמר','נגמרו','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
     'הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','משתלמת','כדאי','מומלץ',
-    'תמצא','תמצאי','יש','אין','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה'
+    'תמצא','תמצאי','יש','אין','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה',
+    'הולך','הולכת','עכשיו','היום','מחר','יש','אין','נגמר','נגמרה'
   ]);
 
+  // Detect and persist store filter
+  const detectedStore = detectStore(q);
+  if (detectedStore) sessionStoreFilter = detectedStore;
+  // "כל הסניפים" / "בכל מקום" resets store filter
+  if (['כל הסניפים','כל סניף','בכל','ללא העדפה'].some(w => q.includes(w))) sessionStoreFilter = null;
+
+  const comparison = isComparisonQuery(q);
+  const isList     = isListQuery(q);
+
   const rawKeywords = q
-    .replace(/[?!.,]/g, '')
+    .replace(/[?!.,\n]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 1 && !stopWords.has(w))
-    .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
+    .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w)
+    .filter((w, i, a) => a.indexOf(w) === i); // dedupe
 
-  const keywords = expandKeywords(rawKeywords);
+  // "מה כדאי היום" / "מה יש במבצע" — deals mode
+  const dealsMode = rawKeywords.length === 0 ||
+    ['מבצע','מבצעים','כדאי','היום','מעניין','מעניינים','שווה'].every(w => q.includes(w) || rawKeywords.length === 0);
 
-  // Score every product
-  let scoredProducts = [];
-  for (const p of allProducts) {
-    const pName = p.name.toLowerCase();
-    const brand = (p.brand || '').toLowerCase();
-    let score = 0;
-    let matchedRawWords = 0;
-
-    for (const kw of keywords) {
-      const isRaw = rawKeywords.includes(kw); // original word vs synonym
-      if (pName.includes(kw)) {
-        // Position bonus: match at start of name is strongest signal
-        if (pName.startsWith(kw)) {
-          score += isRaw ? 25 : 18;
-        } else if (new RegExp(`(^|\\s)${kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`).test(pName)) {
-          score += isRaw ? 20 : 14;
-        } else {
-          score += isRaw ? 12 : 8;
-        }
-        if (isRaw) matchedRawWords++;
-      } else if (brand.includes(kw)) {
-        score += isRaw ? 5 : 3;
-      }
-    }
-
-    // Multi-keyword bonus — more matched raw words = much higher confidence
-    if (matchedRawWords > 1) score += matchedRawWords * 8;
-
-    // Deal & anomaly boost — actionable products ranked higher
-    if (score > 0) {
-      if (p.allTimeLow != null && (p.effectivePrice ?? p.price) <= p.allTimeLow * 1.02) score += 10;
-      else if (p.vsAvgPct != null && p.vsAvgPct < -10) score += 6;
-      else if (p.vsAvgPct != null && p.vsAvgPct < -5)  score += 3;
-      if (p.promo) score += 3;
-      scoredProducts.push({ p, score });
+  if (dealsMode && rawKeywords.every(w => ['מבצע','מבצעים','כדאי','היום','מעניין','מעניינים','שווה'].includes(w))) {
+    const pool = sessionStoreFilter
+      ? allProducts.filter(p => p._sid === sessionStoreFilter)
+      : allProducts;
+    const deals = pool
+      .filter(p => (p.allTimeLow != null && (p.effectivePrice ?? p.price) <= p.allTimeLow * 1.05)
+                || (p.vsAvgPct != null && p.vsAvgPct < -12))
+      .sort((a, b) => (a.vsAvgPct ?? 0) - (b.vsAvgPct ?? 0))
+      .slice(0, 40);
+    if (deals.length) {
+      const storeLabel = sessionStoreFilter
+        ? `[מסונן: ${STORES.find(s=>s.id===sessionStoreFilter)?.short}]\n`
+        : '';
+      lastChatContext = storeLabel + '[מצב: הזדמנויות חריגות בלבד]\n' + deals.map(formatProductLine).join('\n');
+      return lastChatContext;
     }
   }
 
-  // Fallback: top deals
-  if (scoredProducts.length === 0) {
+  let scored = scoreProducts(rawKeywords, sessionStoreFilter);
+
+  // Fallback — no results
+  if (scored.length === 0) {
     if (lastChatContext) return lastChatContext;
-    scoredProducts = allProducts
-      .filter(p => p.promo && p.vsAvgPct != null)
+    const pool = sessionStoreFilter ? allProducts.filter(p => p._sid === sessionStoreFilter) : allProducts;
+    scored = pool.filter(p => p.promo && p.vsAvgPct != null)
       .sort((a, b) => (a.vsAvgPct || 0) - (b.vsAvgPct || 0))
-      .slice(0, 30)
-      .map(p => ({ p, score: 1 }));
+      .slice(0, 30).map(p => ({ p, score: 1 }));
   }
 
-  // Sort: score first, then best price/100g as tiebreaker
-  scoredProducts.sort((a, b) => {
+  // Sort
+  scored.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     const va = a.p.pricePer100 ?? (a.p.effectivePrice ?? a.p.price);
     const vb = b.p.pricePer100 ?? (b.p.effectivePrice ?? b.p.price);
     return va - vb;
   });
 
-  // Deduplicate by barcode — keep highest-scored entry per barcode
-  const seen = new Map();
-  for (const item of scoredProducts) {
-    const bc = item.p.barcode;
-    if (!seen.has(bc)) seen.set(bc, item);
+  // Dedup by barcode — skip for comparison queries
+  let top;
+  if (comparison) {
+    top = scored.slice(0, 50);
+  } else {
+    const seen = new Map();
+    for (const item of scored) {
+      if (!seen.has(item.p.barcode)) seen.set(item.p.barcode, item);
+    }
+    top = [...seen.values()].slice(0, 50);
   }
-  const top = [...seen.values()].slice(0, 50);
 
-  // Summary avg price/100g for Gemini's reference
-  const withP100 = top.filter(x => x.p.pricePer100);
-  const avgP100 = withP100.length
-    ? withP100.reduce((s, x) => s + x.p.pricePer100, 0) / withP100.length
-    : null;
+  const storeLabel = sessionStoreFilter
+    ? `[מסונן לסניף: ${STORES.find(s=>s.id===sessionStoreFilter)?.short}]\n`
+    : '';
+  const listLabel = isList ? '[מצב: רשימת קניות]\n' : '';
 
-  const lines = top.map(({ p }) => {
-    const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
-    const eff   = p.effectivePrice ?? p.price;
-    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0, 55)}]` : '';
-
-    let unitInfo = '';
-    if (p.pricePer100) {
-      const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
-      unitInfo = ` | ₪${p.pricePer100}/100${unit}`;
-    } else if (p.unit) {
-      unitInfo = ` | ${p.unit}`;
-    }
-
-    let vsAvg = '';
-    if (p.vsAvgPct != null) {
-      const sign = p.vsAvgPct > 0 ? '+' : '';
-      vsAvg = ` | ${sign}${p.vsAvgPct}% מממוצע`;
-    }
-
-    let hist = '';
-    if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) {
-      hist = ' | ⚡ שפל היסטורי';
-    } else if (p.changePct != null && p.changePct < -5) {
-      hist = ` | 📉 ירד ${Math.abs(Math.round(p.changePct))}% לאחרונה`;
-    }
-
-    return `• ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${unitInfo}${vsAvg}${hist}`;
-  }).join('\n');
-
-  let summary = avgP100 ? `[ממוצע מחיר/100 יחידה בתוצאות: ₪${avgP100.toFixed(2)}]\n` : '';
-  lastChatContext = summary + lines;
+  lastChatContext = storeLabel + listLabel + top.map(({p}) => formatProductLine(p)).join('\n');
   return lastChatContext;
 }
 
@@ -1527,37 +1618,52 @@ async function sendChat() {
   const thinking = addThinking();
   const context  = buildContext(query);
   const today    = new Date().toLocaleDateString('he-IL');
+  const storeCtx = sessionStoreFilter
+    ? `\nסניף פעיל בשיחה זו: ${STORES.find(s=>s.id===sessionStoreFilter)?.short || sessionStoreFilter}`
+    : '';
 
   const systemPrompt = `אתה סוכן קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בגבעתיים.
 תאריך היום: ${today}.
-סניפים: שלי שביט | שופרסל אקספרס ההסתדרות | סיטי מרקט גבעתיים | גוד פארם גבעתיים.
+סניפים: שלי שביט | שופרסל אקספרס ההסתדרות | סיטי מרקט גבעתיים | גוד פארם גבעתיים.${storeCtx}
 
 ## זהות
-אתה עוזר קניות שיחתי. אתה חושב לפני שאתה עונה, שואל שאלת הבהרה כשצריך, ותמיד מבסס את ההמלצה שלך על הנתונים בלבד.
+אתה יועץ קניות תכליתי. תפקידך לחסוך למשתמש זמן וכסף — לא להציג רשימות. תן תשובה ישירה וממוקדת.
 
-## עקרונות השוואה
-- השווה תמיד לפי **מחיר ל-100 גרם / 100 מ"ל** (שדה pricePer100). אם אין — השתמש ב-effectivePrice.
-- effectivePrice = מחיר אחרי מבצע (כבר מחושב). זה המחיר הרלוונטי, לא המחיר הרגיל.
-- vsAvgPct שלילי = זול מהממוצע. מתחת ל-10%- זו הזדמנות. מתחת ל-20%- זו הזדמנות חריגה.
-- ⚡ שפל היסטורי = המחיר הכי נמוך שנרשם אי פעם. כדאי לציין זאת בפירוש.
-- [כל הסניפים: ...] = מחירי אותו ברקוד בשאר הסניפים. השתמש בזה להשוואה ישירה.
+## פורמט תשובה
+תמיד ענה בפורמט הזה בלבד:
+[X תוצאות נמצאו] ← משפט אחד בלבד, רק אם רלוונטי
+**הכי משתלם:** [שם מוצר] | [סניף] | ₪[מחיר מלא] ([משקל/כמות]) | ₪[X]/[יחידת השוואה]
+**במקום השני:** [שם] | [סניף] | ₪[מחיר] | ₪[X]/[יחידת השוואה] ← רק אם ההפרש מעל 10%
+⚡ [הערה על הזדמנות חריגה] ← רק אם יש שפל היסטורי או vsAvgPct < -15%
+[קיים גם ב: סניף ₪X] ← רק אם אותו מוצר קיים בסניפים נוספים
 
-## אופן מענה
-1. אם המשתמש שואל על מוצר כללי (כמו "מוצרלה") — **קודם כל** זהה את הסוגים השונים שקיימים ברשימה (מגורדת / כדורים / פרסקה / רגילה וכו') ושאל איזה סוג הוא מחפש — אלא אם יש רק סוג אחד.
-2. אחרי שיש לך סוג ספציפי — הצג את האפשרויות הממוינות לפי מחיר ל-100 גרם (מהזול לביקר), ציין מחיר מלא + מחיר ל-100 גרם + סניף + מבצע אם יש.
-3. סיים תמיד בהמלצה ברורה: **"הכי משתלם: [שם מוצר מדויק] ב[סניף] — ₪X ל-100 גרם"**.
-4. אם יש הזדמנות חריגה (vsAvgPct < -15% או שפל היסטורי) — ציין אותה בנפרד עם הדגשה.
-5. אם המשתמש שולח רשימת קניות — טפל בכל פריט בנפרד ואז סכם: לאיזה סניף כדאי ללכת בסך הכל ולמה.
+זהו. אל תוסיף שורות נוספות אלא אם נשאלת.
 
-## כללים
-- אסור להמציא מוצרים, מחירים, או סניפים שאינם ברשימה.
-- אסור להשתמש בטבלאות HTML. טקסט ונקודות בלבד.
-- תשובות קצרות וממוקדות. אל תפרט יתר על המידה אלא אם נשאל.
-- אם מוצר לא נמצא ברשימה — אמור זאת בפירוש.
-- הקטגוריה [קטגוריה] היא אינדיקציה בלבד ולא תמיד מדויקת — הסתמך על שם המוצר בעיקר.
-- כשאתה שואל שאלת הבהרה — שאל בקצרה בלבד (דוגמה: "מחפש מגורדת, כדורים, או פרסקה?"). אל תפרט את כל האפשרויות — שמור את הרשימה המלאה לאחרי שתקבל תשובה.
+## יחידת השוואה — לפי הגיון
+- גרם/מ"ל: גבינות, בשר, דגים, נקניק, יוגורט, שמן, קמח, אורז, פסטה
+- ליחידה: ביצים, לחמניות, אבוקדו, לימון, מלפפון בודד, פרי בודד
+- לק"ג: ירקות ופירות בתפזורת
+- לאריזה: כשאין מידע על משקל
 
-## נתוני מוצרים רלוונטיים:
+## כללי מפתח
+- effectivePrice = מחיר אחרי מבצע — זה המחיר הרלוונטי תמיד
+- vsAvgPct שלילי = זול מהממוצע ההיסטורי. מתחת ל-15%- = הזדמנות חריגה
+- ⚡ שפל היסטורי = הכי נמוך שנרשם אי פעם — תמיד ראוי לציון
+- אם הפרש בין מקום ראשון לשני < 10% — אל תציין מקום שני, כתוב "מחיר דומה בסניפים"
+- אם מוצר לא קיים ברשימה — אמור זאת ישירות
+- אסור להמציא מחירים, מוצרים, או סניפים שאינם ברשימה
+- אסור להשתמש בטבלאות. טקסט בלבד
+
+## זיכרון סניף
+אם המשתמש ציין סניף ("אני הולך לשביט", "מה יש באקספרס") — זכור אותו לכל שאר השיחה עד שיגיד אחרת.
+אם context מסומן [מסונן לסניף: X] — ענה רק על אותו סניף.
+
+## מצבים מיוחדים
+- [מצב: הזדמנויות חריגות] — הצג 3-4 הדילים הטובים ביותר בלבד, מחיר + סניף + כמה זול מהממוצע
+- [מצב: רשימת קניות] — שורה אחת לכל פריט, סיים ב: "**המלצה:** רוב הפריטים הכי זולים ב[סניף]"
+- שאלת הבהרה — שאל בשורה אחת קצרה בלבד: "מגורדת, כדורים, או פרסקה?" — לא תפרט לפני שתקבל תשובה
+
+## נתוני מוצרים:
 ${context}`;
 
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
@@ -1569,15 +1675,12 @@ ${context}`;
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: chatHistory,
-        generationConfig: { maxOutputTokens: 1000, temperature: 0.2 }
+        generationConfig: { maxOutputTokens: 800, temperature: 0.15 }
       })
     });
 
     const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error?.message || 'שגיאת API');
-    }
+    if (!res.ok) throw new Error(data.error?.message || 'שגיאת API');
 
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     thinking.remove();
