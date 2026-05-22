@@ -612,8 +612,6 @@ function init() {
   }
   render();
   updateBadge();
-
-  switchTab('bot');
 }
 
 let curStore = 'all';
@@ -1530,7 +1528,13 @@ function buildContext(query) {
   return `[נמצאו ${scored.length} תוצאות | מוצג: ${top.length} | סניף: ${storeLabel}]\n${productLines}`;
 }
 
+let _lastSend = 0;
+
 async function sendChat() {
+  const now = Date.now();
+  if (now - _lastSend < 2000) return; // prevent burst sends
+  _lastSend = now;
+
   const input = document.getElementById('chat-input');
   const query = input.value.trim();
   if (!query) return;
@@ -1627,6 +1631,8 @@ ${context}`;
   document.getElementById('chat-send').disabled = false;
   document.getElementById('chat-input').focus();
 }
+
+let _lastSend = 0;
 
 boot();
 </script>
