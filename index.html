@@ -359,11 +359,11 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
   <div class="sp-msg" id="splash-msg">טוען...</div>
 </div>
 
-<!-- Tab bar -->
+<!-- Tab bar (Bot Tab Active by Default) -->
 <div id="tab-bar">
   <div class="tab-logo">מחירו<em>סקופ</em></div>
-  <button class="tab-btn active" id="tab-app" onclick="switchTab('app')">🛍 חנות</button>
-  <button class="tab-btn" id="tab-bot" onclick="switchTab('bot')">🤖 יועץ</button>
+  <button class="tab-btn" id="tab-app" onclick="switchTab('app')">🛍 חנות</button>
+  <button class="tab-btn active" id="tab-bot" onclick="switchTab('bot')">🤖 יועץ</button>
   <div class="tab-actions">
     <button class="h-pill" onclick="openCart()">
       🛒
@@ -374,7 +374,7 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
 </div>
 
 <!-- App tab -->
-<div class="tab-screen active" id="app-screen">
+<div class="tab-screen" id="app-screen">
   <div class="app">
     <nav class="sidebar" id="sidebar"></nav>
     <div class="main" id="main">
@@ -431,7 +431,7 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
 </div>
 
 <!-- Bot tab -->
-<div class="tab-screen" id="bot-screen" style="flex-direction:column">
+<div class="tab-screen active" id="bot-screen" style="flex-direction:column">
   <div class="bot-header">
     <div class="bot-avatar">🤖</div>
     <div>
@@ -444,7 +444,7 @@ body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); 
     <div class="chat-msg chat-assistant">
       <div class="chat-bubble">
         שלום! אני יועץ הקניות שלך.<br>
-        שאל אותי על מחיר, מבצע, או שלח רשימה ואמצא לך את הכי משתלם.
+        שאל אותי על מחיר, מבצע, או שלח רשימה ואמצא לך איפה הכי משתלם לקנות.
       </div>
     </div>
   </div>
@@ -616,6 +616,9 @@ function init() {
   }
   render();
   updateBadge();
+
+  // Make sure Bot tab is active on app load
+  switchTab('bot');
 }
 
 let curStore = 'all';
@@ -1441,59 +1444,29 @@ function scoreProducts(rawKeywords, storeFilter) {
   return results;
 }
 
+// Improved Formatter - clear structure for the LLM
 function formatProductLine(p) {
   const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
   const eff   = p.effectivePrice ?? p.price;
-  const promo = p.promo ? ` [מבצע: ${p.promo.slice(0, 50)}]` : '';
+  const promo = p.promo ? ` (מבצע: ${p.promo.slice(0, 50)})` : '';
 
-  // Full price + weight/volume
-  const size = p.unit ? ` (${p.unit})` : '';
-
-  // Comparison unit — context-aware
   let unitInfo = '';
-  if (p.pricePer100 && p.unitType && p.qty) {
-    // Use per-unit for clearly countable items (eggs, individual items under 5 qty)
+  if (p.pricePer100 && p.unitType) {
     const isCountable = p.unitType === 'unit' || (p.qty <= 12 && !p.unitType);
-    if (isCountable) {
-      const perUnit = (eff / p.qty).toFixed(2);
-      unitInfo = ` | ₪${perUnit}/יחידה`;
+    if (isCountable && p.qty) {
+      unitInfo = ` | ₪${(eff / p.qty).toFixed(2)} ליחידה`;
     } else {
       const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
-      unitInfo = ` | ₪${p.pricePer100}/100${unit}`;
+      unitInfo = ` | ₪${p.pricePer100} ל-100 ${unit}`;
     }
-  } else if (p.pricePer100) {
-    const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
-    unitInfo = ` | ₪${p.pricePer100}/100${unit}`;
   }
 
-  let vsAvg = '';
-  if (p.vsAvgPct != null) {
-    const sign = p.vsAvgPct > 0 ? '+' : '';
-    vsAvg = ` | ${sign}${p.vsAvgPct}% מממוצע`;
-  }
+  let extra = [];
+  if (p.vsAvgPct != null) extra.push(`${p.vsAvgPct > 0 ? '+' : ''}${p.vsAvgPct}% מממוצע`);
+  if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) extra.push('⚡ שפל היסטורי');
+  else if (p.changePct != null && p.changePct < -5) extra.push(`📉 ירד ב-${Math.abs(Math.round(p.changePct))}%`);
 
-  let hist = '';
-  if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) {
-    hist = ' | ⚡ שפל היסטורי';
-  } else if (p.changePct != null && p.changePct < -5) {
-    hist = ` | 📉 ירד ${Math.abs(Math.round(p.changePct))}%`;
-  }
-
-  // Other stores selling same barcode
-  let otherStores = '';
-  if (p._prices) {
-    const others = Object.entries(p._prices)
-      .filter(([sid, pr]) => sid !== p._sid)
-      .map(([sid, pr]) => {
-        const sname = STORES.find(s => s.id === sid)?.short || sid;
-        const diff = Math.round(((pr - eff) / eff) * 100);
-        const sign = diff > 0 ? '+' : '';
-        return `${sname} ₪${pr.toFixed(2)} (${sign}${diff}%)`;
-      });
-    if (others.length) otherStores = ` | גם ב: ${others.join(', ')}`;
-  }
-
-  return `• ${p.name}${size} | ${store} | ₪${eff.toFixed(2)}${promo}${unitInfo}${vsAvg}${hist}${otherStores}`;
+  return `• שם: ${p.name} ${p.unit ? '('+p.unit+')' : ''}\n  מחיר: ₪${eff.toFixed(2)}${promo}${unitInfo}\n  סניף: ${store}\n  סטטוס: ${extra.join(', ') || 'רגיל'}\n`;
 }
 
 function buildContext(query) {
@@ -1503,8 +1476,9 @@ function buildContext(query) {
     'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה',
     'מחפש','מחפשת','נגמר','נגמרו','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
     'הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','משתלמת','כדאי','מומלץ',
-    'תמצא','תמצאי','יש','אין','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה',
-    'הולך','הולכת','עכשיו','היום','מחר','יש','אין','נגמר','נגמרה'
+    'תמצא','תמצאי','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה',
+    'הולך','הולכת','עכשיו','היום','מחר','אין','אבל','לגבי','על','המחיר','עבור',
+    'אותו','היא','הוא','הם','הן','ואיפה'
   ]);
 
   // Detect and persist store filter
@@ -1549,7 +1523,11 @@ function buildContext(query) {
 
   // Fallback — no results
   if (scored.length === 0) {
-    if (lastChatContext) return lastChatContext;
+    if (rawKeywords.length === 0 && lastChatContext) {
+      // It's highly likely a follow up question (e.g. "כמה זה עולה?") so re-use the exact last context
+      return lastChatContext;
+    }
+
     const pool = sessionStoreFilter ? allProducts.filter(p => p._sid === sessionStoreFilter) : allProducts;
     scored = pool.filter(p => p.promo && p.vsAvgPct != null)
       .sort((a, b) => (a.vsAvgPct || 0) - (b.vsAvgPct || 0))
@@ -1603,49 +1581,21 @@ async function sendChat() {
     ? `\nסניף פעיל בשיחה זו: ${STORES.find(s=>s.id===sessionStoreFilter)?.short || sessionStoreFilter}`
     : '';
 
-  const systemPrompt = `אתה סוכן קניות חכם לאפליקציית מחירוסקופ — השוואת מחירים בגבעתיים.
+  // Improved, relaxed prompt that focuses on providing information cleanly
+  const systemPrompt = `אתה יועץ קניות אישי ומומחה לאפליקציית 'מחירוסקופ' בגבעתיים.
 תאריך היום: ${today}.
 סניפים: שלי שביט | שופרסל אקספרס ההסתדרות | סיטי מרקט גבעתיים | גוד פארם גבעתיים.${storeCtx}
 
-## זהות
-אתה יועץ קניות תכליתי. תפקידך לחסוך למשתמש זמן וכסף — לא להציג רשימות. תן תשובה ישירה וממוקדת.
+## נתונים שנמצאו עבור שאלת המשתמש (או מהשאלה הקודמת שלו):
+${context}
 
-## פורמט תשובה
-תמיד ענה בפורמט הזה בלבד:
-[X תוצאות נמצאו] ← משפט אחד בלבד, רק אם רלוונטי
-**הכי משתלם:** [שם מוצר] | [סניף] | ₪[מחיר מלא] ([משקל/כמות]) | ₪[X]/[יחידת השוואה]
-**במקום השני:** [שם] | [סניף] | ₪[מחיר] | ₪[X]/[יחידת השוואה] ← רק אם ההפרש מעל 10%
-⚡ [הערה על הזדמנות חריגה] ← רק אם יש שפל היסטורי או vsAvgPct < -15%
-[קיים גם ב: סניף ₪X] ← רק אם אותו מוצר קיים בסניפים נוספים
-
-זהו. אל תוסיף שורות נוספות אלא אם נשאלת.
-
-## יחידת השוואה — לפי הגיון
-- גרם/מ"ל: גבינות, בשר, דגים, נקניק, יוגורט, שמן, קמח, אורז, פסטה
-- ליחידה: ביצים, לחמניות, אבוקדו, לימון, מלפפון בודד, פרי בודד
-- לק"ג: ירקות ופירות בתפזורת
-- לאריזה: כשאין מידע על משקל
-
-## כללי מפתח
-- effectivePrice = מחיר אחרי מבצע — זה המחיר הרלוונטי תמיד
-- vsAvgPct שלילי = זול מהממוצע ההיסטורי. מתחת ל-15%- = הזדמנות חריגה
-- ⚡ שפל היסטורי = הכי נמוך שנרשם אי פעם — תמיד ראוי לציון
-- אם הפרש בין מקום ראשון לשני < 10% — אל תציין מקום שני, כתוב "מחיר דומה בסניפים"
-- אם מוצר לא קיים ברשימה — אמור זאת ישירות
-- אסור להמציא מחירים, מוצרים, או סניפים שאינם ברשימה
-- אסור להשתמש בטבלאות. טקסט בלבד
-
-## זיכרון סניף
-אם המשתמש ציין סניף ("אני הולך לשביט", "מה יש באקספרס") — זכור אותו לכל שאר השיחה עד שיגיד אחרת.
-אם context מסומן [מסונן לסניף: X] — ענה רק על אותו סניף.
-
-## מצבים מיוחדים
-- [מצב: הזדמנויות חריגות] — הצג 3-4 הדילים הטובים ביותר בלבד, מחיר + סניף + כמה זול מהממוצע
-- [מצב: רשימת קניות] — שורה אחת לכל פריט, סיים ב: "**המלצה:** רוב הפריטים הכי זולים ב[סניף]"
-- שאלת הבהרה — שאל בשורה אחת קצרה בלבד: "מגורדת, כדורים, או פרסקה?" — לא תפרט לפני שתקבל תשובה
-
-## נתוני מוצרים:
-${context}`;
+## חוקים למענה:
+1. היה ענייני, קצר וברור.
+2. חובה לציין את המחיר המדויק ואת שם הסניף כאשר אתה ממליץ על מוצר. אין להמליץ בלי לכלול מחיר! (לדוגמה: "הטופו המשתלם ביותר הוא טופו במרקם קשה (300 גרם) שעולה 12.90 ₪ בסניף שלי שביט").
+3. אם יש כמה אפשרויות, ציין את הזולה/המשתלמת ביותר קודם (היעזר במחיר ל-100 גרם אם מופיע).
+4. אם המשתמש שואל שאלת המשך (כמו "כמה זה עולה?" או "איפה זה?"), הסתמך על הנתונים המסופקים למעלה והשב מיד. אל תאמר שהמוצר חסר אם הוא מופיע בנתונים.
+5. לעולם אל תמציא מידע, מחירים או מוצרים.
+6. הצג את התשובה בצורה קריאה באמצעות טקסט ורשימות בולטים (ללא טבלאות).`;
 
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
 
