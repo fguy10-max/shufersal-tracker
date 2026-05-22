@@ -1340,6 +1340,57 @@ function addThinking() {
   return div;
 }
 
+// Synonym map — expand each user keyword to multiple search terms
+const SYNONYMS = {
+  'מוצרלה':   ['מוצרלה'],
+  'גבינה':    ['גבינה'],
+  'קוטג':     ["קוטג'", 'קוטג'],
+  'יוגורט':   ['יוגורט', "יוגורט"],
+  'חלב':      ['חלב'],
+  'שמנת':     ['שמנת', 'שמנת חמוצה'],
+  'ביצים':    ['ביצים', 'ביצה'],
+  'עוף':      ['עוף', 'חזה עוף', 'שוק', 'כנף', 'פרגית'],
+  'בשר':      ['בשר', 'בקר', 'טחון', 'אנטריקוט', 'סטייק'],
+  'פסטה':     ['פסטה', 'ספגטי', 'פנה', 'ריגטוני', 'פוסילי', 'טליאטלה', 'לינגוויני'],
+  'אורז':     ['אורז'],
+  'לחם':      ['לחם', 'פיתה', 'בגט', 'חלה'],
+  'טופו':     ['טופו', 'טופה'],
+  'קפה':      ['קפה', 'נס קפה', 'אספרסו'],
+  'שוקולד':   ['שוקולד'],
+  'עגבניות':  ['עגבניות', 'עגבנייה'],
+  'מלפפון':   ['מלפפון', 'מלפפונים'],
+  'גזר':      ['גזר', 'גזרים'],
+  'תפוח':     ['תפוח', 'תפוחים'],
+  'בננה':     ['בננה', 'בננות'],
+  'שמן':      ['שמן', "שמן זית", 'שמן קנולה'],
+  'קמח':      ['קמח'],
+  'סוכר':     ['סוכר'],
+  'מלח':      ['מלח'],
+  'ביסלי':    ['ביסלי'],
+  'במבה':     ['במבה'],
+  'שקשוקה':   ['שקשוקה'],
+  'טחינה':    ['טחינה'],
+  'חומוס':    ['חומוס'],
+  'גבינה צהובה': ['גבינה צהובה', 'גבינה חצי קשה', 'אמנטל', 'גאודה', 'צהובה'],
+  'גבינה לבנה': ['גבינה לבנה', '5%', '9%'],
+};
+
+function expandKeywords(keywords) {
+  const expanded = new Set(keywords);
+  for (const kw of keywords) {
+    if (SYNONYMS[kw]) {
+      SYNONYMS[kw].forEach(s => expanded.add(s));
+    }
+    // partial match against synonym keys
+    for (const [key, vals] of Object.entries(SYNONYMS)) {
+      if (key.includes(kw) || kw.includes(key)) {
+        vals.forEach(s => expanded.add(s));
+      }
+    }
+  }
+  return [...expanded];
+}
+
 function buildContext(query) {
   const q = query.toLowerCase();
 
@@ -1347,14 +1398,16 @@ function buildContext(query) {
     'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני','רוצה',
     'מחפש','מחפשת','נגמר','נגמרו','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
     'הזה','הזאת','תביא','האם','אפשר','למצוא','משתלם','משתלמת','כדאי','מומלץ',
-    'תמצא','תמצאי','יש','אין','קנות','לקנות','רשימה','קניות','סופר','סניף'
+    'תמצא','תמצאי','יש','אין','קנות','לקנות','רשימה','קניות','סופר','סניף','טוב','טובה'
   ]);
 
-  const keywords = q
+  const rawKeywords = q
     .replace(/[?!.,]/g, '')
     .split(/\s+/)
     .filter(w => w.length > 1 && !stopWords.has(w))
     .map(w => w.startsWith('ה') && w.length > 3 ? w.substring(1) : w);
+
+  const keywords = expandKeywords(rawKeywords);
 
   // Score every product
   let scoredProducts = [];
@@ -1362,18 +1415,36 @@ function buildContext(query) {
     const pName = p.name.toLowerCase();
     const brand = (p.brand || '').toLowerCase();
     let score = 0;
-    let matchedWords = 0;
+    let matchedRawWords = 0;
+
     for (const kw of keywords) {
+      const isRaw = rawKeywords.includes(kw); // original word vs synonym
       if (pName.includes(kw)) {
-        score += 10;
-        matchedWords++;
-        if (new RegExp(`(^|\\s)${kw}`).test(pName)) score += 5;
+        // Position bonus: match at start of name is strongest signal
+        if (pName.startsWith(kw)) {
+          score += isRaw ? 25 : 18;
+        } else if (new RegExp(`(^|\\s)${kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`).test(pName)) {
+          score += isRaw ? 20 : 14;
+        } else {
+          score += isRaw ? 12 : 8;
+        }
+        if (isRaw) matchedRawWords++;
       } else if (brand.includes(kw)) {
-        score += 4;
+        score += isRaw ? 5 : 3;
       }
     }
-    if (matchedWords > 1) score += matchedWords * 5;
-    if (score > 0) scoredProducts.push({ p, score });
+
+    // Multi-keyword bonus — more matched raw words = much higher confidence
+    if (matchedRawWords > 1) score += matchedRawWords * 8;
+
+    // Deal & anomaly boost — actionable products ranked higher
+    if (score > 0) {
+      if (p.allTimeLow != null && (p.effectivePrice ?? p.price) <= p.allTimeLow * 1.02) score += 10;
+      else if (p.vsAvgPct != null && p.vsAvgPct < -10) score += 6;
+      else if (p.vsAvgPct != null && p.vsAvgPct < -5)  score += 3;
+      if (p.promo) score += 3;
+      scoredProducts.push({ p, score });
+    }
   }
 
   // Fallback: top deals
@@ -1386,7 +1457,7 @@ function buildContext(query) {
       .map(p => ({ p, score: 1 }));
   }
 
-  // Sort by score then by best value (effectivePrice per 100g if available)
+  // Sort: score first, then best price/100g as tiebreaker
   scoredProducts.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     const va = a.p.pricePer100 ?? (a.p.effectivePrice ?? a.p.price);
@@ -1394,9 +1465,15 @@ function buildContext(query) {
     return va - vb;
   });
 
-  const top = scoredProducts.slice(0, 80);
+  // Deduplicate by barcode — keep highest-scored entry per barcode
+  const seen = new Map();
+  for (const item of scoredProducts) {
+    const bc = item.p.barcode;
+    if (!seen.has(bc)) seen.set(bc, item);
+  }
+  const top = [...seen.values()].slice(0, 50);
 
-  // Compute average effectivePrice per 100g among matched products (for anomaly detection)
+  // Summary avg price/100g for Gemini's reference
   const withP100 = top.filter(x => x.p.pricePer100);
   const avgP100 = withP100.length
     ? withP100.reduce((s, x) => s + x.p.pricePer100, 0) / withP100.length
@@ -1405,9 +1482,8 @@ function buildContext(query) {
   const lines = top.map(({ p }) => {
     const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
     const eff   = p.effectivePrice ?? p.price;
-    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0, 60)}]` : '';
+    const promo = p.promo ? ` [מבצע: ${p.promo.slice(0, 55)}]` : '';
 
-    // Price per unit
     let unitInfo = '';
     if (p.pricePer100) {
       const unit = p.unitType === 'ml' ? 'מ"ל' : 'גרם';
@@ -1416,14 +1492,12 @@ function buildContext(query) {
       unitInfo = ` | ${p.unit}`;
     }
 
-    // vs average (cross-store)
     let vsAvg = '';
     if (p.vsAvgPct != null) {
       const sign = p.vsAvgPct > 0 ? '+' : '';
       vsAvg = ` | ${sign}${p.vsAvgPct}% מממוצע`;
     }
 
-    // Historical signal
     let hist = '';
     if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) {
       hist = ' | ⚡ שפל היסטורי';
@@ -1431,27 +1505,10 @@ function buildContext(query) {
       hist = ` | 📉 ירד ${Math.abs(Math.round(p.changePct))}% לאחרונה`;
     }
 
-    // Cross-store prices for this barcode
-    let crossStore = '';
-    if (p._prices && Object.keys(p._prices).length > 1) {
-      const entries = Object.entries(p._prices)
-        .map(([sid, pr]) => {
-          const sname = STORES.find(s => s.id === sid)?.short || sid;
-          return `${sname}:₪${pr.toFixed(2)}`;
-        })
-        .join(' / ');
-      crossStore = ` | [כל הסניפים: ${entries}]`;
-    }
-
-    return `• ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${unitInfo}${vsAvg}${hist}${crossStore}`;
+    return `• ${p.name} | ${store} | ₪${eff.toFixed(2)}${promo}${unitInfo}${vsAvg}${hist}`;
   }).join('\n');
 
-  // Prepend summary stats for this search
-  let summary = '';
-  if (avgP100) {
-    summary = `[ממוצע מחיר/100 יחידה בתוצאות: ₪${avgP100.toFixed(2)}]\n`;
-  }
-
+  let summary = avgP100 ? `[ממוצע מחיר/100 יחידה בתוצאות: ₪${avgP100.toFixed(2)}]\n` : '';
   lastChatContext = summary + lines;
   return lastChatContext;
 }
@@ -1498,7 +1555,7 @@ async function sendChat() {
 - תשובות קצרות וממוקדות. אל תפרט יתר על המידה אלא אם נשאל.
 - אם מוצר לא נמצא ברשימה — אמור זאת בפירוש.
 - הקטגוריה [קטגוריה] היא אינדיקציה בלבד ולא תמיד מדויקת — הסתמך על שם המוצר בעיקר.
-- כשאתה שואל שאלת הבהרה — שאל בלבד, אל תפרט את כל האפשרויות. שמור את הרשימה המלאה לאחרי שתקבל תשובה.
+- כשאתה שואל שאלת הבהרה — שאל בקצרה בלבד (דוגמה: "מחפש מגורדת, כדורים, או פרסקה?"). אל תפרט את כל האפשרויות — שמור את הרשימה המלאה לאחרי שתקבל תשובה.
 
 ## נתוני מוצרים רלוונטיים:
 ${context}`;
@@ -1512,7 +1569,7 @@ ${context}`;
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: chatHistory,
-        generationConfig: { maxOutputTokens: 800, temperature: 0.2 }
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.2 }
       })
     });
 
@@ -1533,7 +1590,7 @@ ${context}`;
         .replace(/\n/g, '<br>');
       addChatMsg('assistant', formatted);
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      if (chatHistory.length > 16) chatHistory.splice(0, 2);
+      if (chatHistory.length > 8) chatHistory.splice(0, 2);
     } else {
       chatHistory.pop();
       addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה. נסה שוב.');
