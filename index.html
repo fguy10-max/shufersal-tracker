@@ -1290,9 +1290,13 @@ function switchTab(t) {
 function sendChatMsg(text) {
   switchTab('bot');
   setTimeout(() => {
-    document.getElementById('chat-input').value = text;
-    sendChat();
-  }, 60);
+    const input = document.getElementById('chat-input');
+    input.value = text;
+    // Trigger sendChat only if not already waiting for a response
+    if (!document.getElementById('chat-send').disabled) {
+      sendChat();
+    }
+  }, 100);
 }
 
 function addChatMsg(role, html) {
