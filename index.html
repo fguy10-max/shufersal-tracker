@@ -1393,6 +1393,7 @@ function formatLine(p) {
 }
 
 let lastContext = '';
+let _topicContexts = {}; // stores context per topic keyword
 
 function buildContext(query) {
   const q = query.toLowerCase();
@@ -1407,7 +1408,11 @@ function buildContext(query) {
     .filter((w,i,a) => a.indexOf(w) === i);
 
   // Follow-up with no keywords — reuse last context
-  if (rawKws.length === 0) return lastContext || '';
+  // Follow-up: return last context, but hint Gemini what topic it's about
+  if (rawKws.length === 0) {
+    if (!lastContext) return '';
+    return lastContext;
+  }
 
   // Deals mode
   const dealWords = new Set(['מבצע','מבצעים','מעניין','הזדמנות','כדאי','היום']);
@@ -1426,7 +1431,18 @@ function buildContext(query) {
   let scored = scoreProducts(rawKws, allKws, sessionStoreFilter);
 
   if (scored.length === 0) {
-    return lastContext ? `[לא נמצא חדש]\n${lastContext}` : `[לא נמצא: ${rawKws.join(', ')}]`;
+    // If store filter active, try without it
+    if (sessionStoreFilter) {
+      scored = scoreProducts(rawKws, allKws, null);
+      if (scored.length > 0) {
+        const storeName = STORES.find(s=>s.id===sessionStoreFilter)?.short || sessionStoreFilter;
+        // continue with all-store results but note the filter miss
+        scored[0]._filterMiss = storeName;
+      }
+    }
+    if (scored.length === 0) {
+      return lastContext ? `[לא נמצא חדש]\n${lastContext}` : `[לא נמצא: ${rawKws.join(', ')}]`;
+    }
   }
 
   scored.sort((a,b) => {
@@ -1441,6 +1457,7 @@ function buildContext(query) {
 
   const storeLabel = sessionStoreFilter ? STORES.find(s=>s.id===sessionStoreFilter)?.short : 'כל הסניפים';
   lastContext = top.map(formatLine).join('\n');
+  if (rawKws[0]) _topicContexts[rawKws[0]] = lastContext;
   return `[${seen.size} תוצאות | ${storeLabel}]\n${lastContext}`;
 }
 
@@ -1517,7 +1534,9 @@ async function sendChat() {
 - 100ג/מל לרוב | ליחידה לביצים/פירות | לק"ג לתפזורת
 - הפרש < 10%: "מחיר דומה בסניפים"
 - אל תמציא מחירים שאינם ברשימה
-- אין טבלאות. אם מוצר לא קיים — אמור ישירות`;
+- אין טבלאות
+- אם מוצר לא קיים בסניף הנבחר — אמור כך ומצא את הזול ביותר בכל הסניפים
+- אם הקשר מציין שהחיפוש הורחב מהסניף לכל הסניפים — ציין זאת`;
 
   // Inject context into current user message for API, keep clean in history
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
