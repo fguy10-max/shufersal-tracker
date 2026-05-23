@@ -1359,7 +1359,7 @@ function scoreProducts(rawKws, allKws, storeFilter) {
     for (const kw of allKws) {
       const isRaw = rawKws.includes(kw);
       if (name.includes(kw)) {
-        const esc = kw.replace(/[.*+?^${}()|[\]\]/g,'\$&');
+        const esc = kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
         if (name.startsWith(kw))                              score += isRaw ? 25 : 18;
         else if (new RegExp(`(^|\\s)${esc}`).test(name))   score += isRaw ? 20 : 14;
         else                                                  score += isRaw ? 12 : 8;
