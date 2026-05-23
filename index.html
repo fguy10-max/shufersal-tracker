@@ -1303,107 +1303,157 @@ function sendChatMsg(text) {
 }
 
 // ── Build full product context (once, on first tab open) ─────────
-function buildFullContext() {
-  const today = new Date().toLocaleDateString('he-IL');
-  const lines = [];
 
-  for (const p of allProducts) {
-    const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
-    const eff   = p.effectivePrice ?? p.price;
+// ── Store detection ─────────────────────────────────────────────
+const STORE_HINTS = {
+  'שביט': 'sheli_shabit', 'שלי': 'sheli_shabit',
+  'אקספרס': 'express_histadrut', 'הסתדרות': 'express_histadrut',
+  'סיטי': 'citymarket_givataim', 'גוד פארם': 'goodpharm_givataim',
+  'גוד': 'goodpharm_givataim', 'פארם': 'goodpharm_givataim',
+};
+let sessionStoreFilter = null;
 
-    // Price per comparison unit
-    let unit = '';
-    if (p.pricePer100) {
-      unit = `${p.pricePer100}/100${p.unitType === 'ml' ? 'מל' : 'ג'}`;
-    } else if (p.unit) {
-      unit = p.unit;
+function detectStore(q) {
+  for (const [hint, id] of Object.entries(STORE_HINTS)) {
+    if (q.includes(hint)) return id;
+  }
+  return null;
+}
+
+const SYNONYMS = {
+  'מוצרלה':['מוצרלה'],'גבינה':['גבינה'],"קוטג":["קוטג'","קוטג"],
+  'יוגורט':['יוגורט'],'חלב':['חלב'],'ביצים':['ביצים','ביצה'],
+  'עוף':['עוף','חזה עוף','שוק','כנף','פרגית'],
+  'פסטה':['פסטה','ספגטי','פנה','ריגטוני','פוסילי'],
+  'טופו':['טופו','טופה'],'קפה':['קפה','נס קפה','אספרסו'],
+  'שמן':['שמן','שמן זית'],'גבינה צהובה':['גבינה צהובה','אמנטל','גאודה'],
+  'גבינה לבנה':['גבינה לבנה'],'שמנת':['שמנת'],
+};
+
+const STOP_WORDS = new Set([
+  'מה','איזה','איזו','הכי','עם','של','בין','לי','את','שווה','יש','אני',
+  'רוצה','מחפש','מחפשת','צריך','צריכה','כמה','עולה','איפה','זול','זולה',
+  'הזה','האם','אפשר','משתלם','כדאי','לקנות','קניות','סופר','סניף','טוב',
+  'הולך','הולכת','עכשיו','היום','אבל','על','המחיר','תביא','תמצא',
+  'הי','היי','שלום','אוקיי','תודה','בסדר','נגמר','נגמרה','אין',
+]);
+
+function expandKeywords(keywords) {
+  const expanded = new Set(keywords);
+  for (const kw of keywords) {
+    if (SYNONYMS[kw]) SYNONYMS[kw].forEach(s => expanded.add(s));
+    for (const [key, vals] of Object.entries(SYNONYMS)) {
+      if (key.includes(kw) || kw.includes(key)) vals.forEach(s => expanded.add(s));
     }
+  }
+  return [...expanded];
+}
 
-    // Signals
-    const signals = [];
-    if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) signals.push('⚡שפל');
-    if (p.vsAvgPct != null) signals.push(`${p.vsAvgPct > 0 ? '+' : ''}${p.vsAvgPct}%`);
-    if (p.promo) signals.push(`מבצע:${p.promo.slice(0, 40)}`);
-    if (p.changePct != null && p.changePct < -5) signals.push(`📉${Math.abs(Math.round(p.changePct))}%`);
+function scoreProducts(rawKws, allKws, storeFilter) {
+  const pool = storeFilter ? allProducts.filter(p => p._sid === storeFilter) : allProducts;
+  const results = [];
+  for (const p of pool) {
+    const name = p.name.toLowerCase();
+    const brand = (p.brand || '').toLowerCase();
+    let score = 0, matchedRaw = 0;
+    for (const kw of allKws) {
+      const isRaw = rawKws.includes(kw);
+      if (name.includes(kw)) {
+        const esc = kw.replace(/[.*+?^${}()|[\]\]/g,'\$&');
+        if (name.startsWith(kw))                              score += isRaw ? 25 : 18;
+        else if (new RegExp(`(^|\\s)${esc}`).test(name))   score += isRaw ? 20 : 14;
+        else                                                  score += isRaw ? 12 : 8;
+        if (isRaw) matchedRaw++;
+      } else if (brand.includes(kw)) score += isRaw ? 5 : 3;
+    }
+    if (matchedRaw > 1) score += matchedRaw * 8;
+    if (score > 0) {
+      const eff = p.effectivePrice ?? p.price;
+      if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) score += 10;
+      else if (p.vsAvgPct != null && p.vsAvgPct < -10)        score += 6;
+      else if (p.vsAvgPct != null && p.vsAvgPct < -5)         score += 3;
+      if (p.promo) score += 3;
+      results.push({p, score});
+    }
+  }
+  return results;
+}
 
-    const row = [
-      p.name,
-      store,
-      `₪${eff.toFixed(2)}`,
-      unit,
-      ...signals
-    ].filter(Boolean).join('|');
+function formatLine(p) {
+  const store = STORES.find(s => s.id === p._sid)?.short || p._sid;
+  const eff = p.effectivePrice ?? p.price;
+  const signals = [];
+  if (p.allTimeLow != null && eff <= p.allTimeLow * 1.02) signals.push('⚡שפל');
+  if (p.vsAvgPct != null) signals.push(`${p.vsAvgPct > 0 ? '+' : ''}${p.vsAvgPct}%`);
+  if (p.promo) signals.push(`מבצע:${p.promo.slice(0,40)}`);
+  let unit = '';
+  if (p.pricePer100) unit = `${p.pricePer100}/100${p.unitType==='ml'?'מל':'ג'}`;
+  else if (p.unit) unit = p.unit;
+  return [p.name, store, `₪${eff.toFixed(2)}`, unit, ...signals].filter(Boolean).join('|');
+}
 
-    lines.push(row);
+let lastContext = '';
+
+function buildContext(query) {
+  const q = query.toLowerCase();
+
+  const detected = detectStore(q);
+  if (detected) sessionStoreFilter = detected;
+  if (['כל הסניפים','בכל סניף'].some(w => q.includes(w))) sessionStoreFilter = null;
+
+  const rawKws = q.replace(/[?!.,\n]/g,' ').split(/\s+/)
+    .filter(w => w.length > 1 && !STOP_WORDS.has(w))
+    .map(w => w.startsWith('ה') && w.length > 3 ? w.slice(1) : w)
+    .filter((w,i,a) => a.indexOf(w) === i);
+
+  // Follow-up with no keywords — reuse last context
+  if (rawKws.length === 0) return lastContext || '';
+
+  // Deals mode
+  const dealWords = new Set(['מבצע','מבצעים','מעניין','הזדמנות','כדאי','היום']);
+  if (rawKws.every(w => dealWords.has(w))) {
+    const pool = sessionStoreFilter ? allProducts.filter(p => p._sid === sessionStoreFilter) : allProducts;
+    const deals = pool
+      .filter(p => (p.allTimeLow != null && (p.effectivePrice??p.price) <= p.allTimeLow*1.05)
+                || (p.vsAvgPct != null && p.vsAvgPct < -15))
+      .sort((a,b) => (a.vsAvgPct??0)-(b.vsAvgPct??0))
+      .slice(0,20);
+    lastContext = deals.map(formatLine).join('\n');
+    return `[הזדמנויות: ${deals.length}]\n${lastContext}`;
   }
 
-  return `תאריך עדכון: ${today}
-סניפים: שלי שביט | אקספרס ההסתדרות | סיטי מרקט גבעתיים | גוד פארם גבעתיים
-סה"כ מוצרים: ${lines.length.toLocaleString()}
-פורמט: שם|סניף|מחיר|מחיר-ל-יחידה|אותות (⚡שפל=שפל-היסטורי, %=יחס-לממוצע, מבצע:תיאור, 📉ירידה%)
+  const allKws = expandKeywords(rawKws);
+  let scored = scoreProducts(rawKws, allKws, sessionStoreFilter);
 
-${lines.join('\n')}`;
+  if (scored.length === 0) {
+    return lastContext ? `[לא נמצא חדש]\n${lastContext}` : `[לא נמצא: ${rawKws.join(', ')}]`;
+  }
+
+  scored.sort((a,b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.p.pricePer100??(a.p.effectivePrice??a.p.price)) - (b.p.pricePer100??(b.p.effectivePrice??b.p.price));
+  });
+
+  // Deduplicate by barcode
+  const seen = new Map();
+  for (const {p,score} of scored) if (!seen.has(p.barcode)) seen.set(p.barcode, p);
+  const top = [...seen.values()].slice(0, 25);
+
+  const storeLabel = sessionStoreFilter ? STORES.find(s=>s.id===sessionStoreFilter)?.short : 'כל הסניפים';
+  lastContext = top.map(formatLine).join('\n');
+  return `[${seen.size} תוצאות | ${storeLabel}]\n${lastContext}`;
 }
 
-// ── Initialize chat with full context as system instruction ──────
 async function initChatContext() {
   if (chatReady) return;
-
-  const sendBtn = document.getElementById('chat-send');
-  const input   = document.getElementById('chat-input');
-
-  // Build system prompt with full context — no API call needed
-  // Gemini caches identical systemInstruction automatically (implicit caching)
-  const today = new Date().toLocaleDateString('he-IL');
-  const fullContext = buildFullContext();
-
-  window._chatSystemPrompt = `אתה יועץ קניות חכם לאפליקציית מחירוסקופ — גבעתיים. תאריך: ${today}.
-
-יש לך גישה למלוא מאגר המוצרים של 4 סניפים בגבעתיים. המאגר מוזרק לך למטה.
-
-## כיצד לענות
-
-**חיפוש מוצר:**
-**הכי משתלם:** [שם] | [סניף] | ₪[מחיר] ([משקל/כמות]) | ₪[X]/[יחידת השוואה]
-**מקום שני:** [שם] | [סניף] | ₪[מחיר] — רק אם הפרש > 10%
-⚡ הזדמנות חריגה — רק אם שפל היסטורי או מתחת ל-15% מהממוצע
-
-**שאלת המשך:** ענה ישירות, משפט אחד-שניים.
-
-**רשימת קניות:** שורה לכל פריט → המלצת סניף מסכמת.
-
-**"מה כדאי היום" / "מה במבצע":** 3-4 הדילים הכי חריגים — מחיר + סניף + % מתחת לממוצע.
-
-## יחידת השוואה
-- 100ג/מל: גבינות, בשר, דגים, יוגורט, שמן, קמח, פסטה, אורז
-- ליחידה: ביצים, לחמניות, פירות בודדים
-- לק"ג: ירקות ופירות תפזורת
-- לאריזה: כשאין מידע משקל
-
-## כללים
-- effectivePrice (לאחר מבצע) = המחיר הרלוונטי תמיד
-- ⚡שפל = שפל היסטורי — חשוב לציין
-- % שלילי = זול מהממוצע ההיסטורי
-- אם הפרש < 10% בין סניפים — "מחיר דומה"
-- אל תמציא מחירים שאינם במאגר
-- אין טבלאות — טקסט בלבד
-- אם מוצר לא קיים — אמור ישירות
-
-## מאגר המוצרים:
-${fullContext}`;
-
   chatReady = true;
-
-  // Update welcome message
   const msgs = document.getElementById('chat-messages');
   const welcome = msgs.querySelector('.chat-bubble');
-  if (welcome) welcome.innerHTML = `מוכן! ${allProducts.length.toLocaleString()} מוצרים טעונים מ-4 סניפים.<br>שאל אותי על מחיר, מבצע, או שלח רשימת קניות.`;
-
-  sendBtn.disabled = false;
-  input.placeholder = 'שאל שאלה על מחירים...';
+  if (welcome) welcome.innerHTML = `מוכן! ${allProducts.length.toLocaleString()} מוצרים מ-4 סניפים.<br>שאל אותי על מחיר, מבצע, או שלח רשימת קניות.`;
+  document.getElementById('chat-send').disabled = false;
+  document.getElementById('chat-input').placeholder = 'שאל שאלה על מחירים...';
 }
 
-// ── Add message to chat UI ───────────────────────────────────────
 function addChatMsg(role, html) {
   const msgs = document.getElementById('chat-messages');
   const div  = document.createElement('div');
@@ -1446,15 +1496,46 @@ async function sendChat() {
   addChatMsg('user', query.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
   const thinking = addThinking();
 
+  const context = buildContext(query);
+  const today   = new Date().toLocaleDateString('he-IL');
+  const storeCtx = sessionStoreFilter
+    ? `\nסניף פעיל: ${STORES.find(s=>s.id===sessionStoreFilter)?.short}` : '';
+
+  const systemPrompt = `אתה יועץ קניות חכם לאפליקציית מחירוסקופ — גבעתיים. תאריך: ${today}.${storeCtx}
+סניפים: שלי שביט | אקספרס ההסתדרות | סיטי מרקט | גוד פארם.
+
+## פורמט תשובה
+**הכי משתלם:** [שם] | [סניף] | ₪[מחיר] ([משקל]) | ₪[X]/[יחידה]
+**מקום שני:** רק אם הפרש > 10%
+⚡ הזדמנות — רק אם שפל היסטורי או vsAvgPct < -15%
+שאלת המשך: משפט אחד-שניים בלבד.
+רשימת קניות: שורה לכל פריט + המלצת סניף.
+הזדמנויות: 3-4 דילים חריגים בלבד.
+
+## כללים
+- effectivePrice = מחיר אחרי מבצע — תמיד
+- 100ג/מל לרוב | ליחידה לביצים/פירות | לק"ג לתפזורת
+- הפרש < 10%: "מחיר דומה בסניפים"
+- אל תמציא מחירים שאינם ברשימה
+- אין טבלאות. אם מוצר לא קיים — אמור ישירות`;
+
+  // Inject context into current user message for API, keep clean in history
   chatHistory.push({ role: 'user', parts: [{ text: query }] });
+
+  const apiContents = chatHistory.map((msg, i) => {
+    if (i === chatHistory.length - 1 && msg.role === 'user') {
+      return { role: 'user', parts: [{ text: `[נתונים]\n${context}\n\n[שאלה]\n${query}` }] };
+    }
+    return msg;
+  });
 
   try {
     const res = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: window._chatSystemPrompt }] },
-        contents: chatHistory,
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: apiContents,
         generationConfig: { maxOutputTokens: 600, temperature: 0.15 }
       })
     });
@@ -1473,8 +1554,7 @@ async function sendChat() {
         .replace(/\n/g, '<br>');
       addChatMsg('assistant', formatted);
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      // Keep last 10 exchanges — context is in systemInstruction, not history
-      if (chatHistory.length > 20) chatHistory.splice(0, 2);
+      if (chatHistory.length > 8) chatHistory.splice(0, 2);
     } else {
       chatHistory.pop();
       addChatMsg('assistant', '😅 לא הצלחתי לקבל תשובה. נסה שוב.');
