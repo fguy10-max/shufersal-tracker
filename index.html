@@ -1536,7 +1536,7 @@ async function sendChat() {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: apiContents,
-        generationConfig: { maxOutputTokens: 600, temperature: 0.15 }
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.15 }
       })
     });
 
